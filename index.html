@@ -33,7 +33,7 @@
 <div class="sticky-mobile"><a class="btn btn-primary" href="#request">Accéder à l’expérience</a></div><footer><span>© 2026 LAYLA NIGHTS</span><span>Private access · QR validation · Club mode</span></footer>
 <script>
 const eventDate=new Date('2026-05-03T23:00:00').getTime();function updateCountdown(){const d=eventDate-Date.now();if(d<=0)return;days.textContent=String(Math.floor(d/86400000)).padStart(2,'0');hours.textContent=String(Math.floor(d%86400000/3600000)).padStart(2,'0');minutes.textContent=String(Math.floor(d%3600000/60000)).padStart(2,'0');seconds.textContent=String(Math.floor(d%60000/1000)).padStart(2,'0')}updateCountdown();setInterval(updateCountdown,1000);
-let whatsapp='212600000000';fetch('/api/config').then(r=>r.json()).then(c=>{whatsapp=c.whatsappNumber||whatsapp;waBtn.href=`https://wa.me/${whatsapp}?text=${encodeURIComponent('Hello, je veux demander un accès pour LAYLA NIGHTS.')}`});
+let whatsapp='212691772298';fetch('/api/config').then(r=>r.json()).then(c=>{whatsapp=c.whatsappNumber||whatsapp;waBtn.href=`https://wa.me/${whatsapp}?text=${encodeURIComponent('Hello, je veux demander un accès pour LAYLA NIGHTS.')}`});
 accessForm.addEventListener('submit',async(e)=>{e.preventDefault();const data=Object.fromEntries(new FormData(accessForm).entries());formMsg.textContent='Envoi de la demande...';const res=await fetch('/api/access-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const json=await res.json();if(!res.ok){formMsg.textContent=json.error||'Erreur.';return}formMsg.innerHTML=`Demande reçue. Référence: <b>${json.guest.reference}</b>. L’équipe vous contactera après validation.`;accessForm.reset();});
 </script>
 </body></html>
