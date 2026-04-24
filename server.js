@@ -15,7 +15,11 @@ db.ensureIndex({ fieldName: 'reference', unique: true }).catch(() => {});
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 function makeReference(prefix = 'LAYLA') {
   return `${prefix}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
