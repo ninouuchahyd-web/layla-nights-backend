@@ -21,6 +21,10 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 function makeReference(prefix = 'LAYLA') {
   return `${prefix}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
