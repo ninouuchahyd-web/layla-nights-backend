@@ -7,7 +7,7 @@ const path = require('path');
 const app = express();
 const port = Number(process.env.PORT || 4242);
 const appUrl = process.env.APP_URL || `http://localhost:${port}`;
-const adminPassword = process.env.ADMIN_PASSWORD || 'admin';
+const adminPassword = process.env.ADMIN_PASSWORD || 'Ksgc9122';
 const whatsappNumber = process.env.WHATSAPP_NUMBER || '212600000000';
 
 const db = Datastore.create({ filename: path.join(__dirname, 'guests.db'), autoload: true });
