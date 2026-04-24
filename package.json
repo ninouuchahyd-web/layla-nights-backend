@@ -1,0 +1,15 @@
+{
+  "name": "layla-nights-club-mode",
+  "version": "1.0.0",
+  "description": "Layla Nights club mode landing page with private access requests, WhatsApp follow-up, QR guest validation and simple dashboard.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "nedb-promises": "^6.2.3"
+  }
+}
