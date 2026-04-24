@@ -1,6 +1,107 @@
-<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LAYLA Admin</title><style>body{font-family:Inter,system-ui,sans-serif;background:#050505;color:#f7f0e6;padding:24px}h1{color:#d8ad55}input,button{padding:12px 14px;border-radius:12px;border:1px solid rgba(216,173,85,.35);background:#111;color:#fff}button{cursor:pointer;background:#d8ad55;color:#140e08;font-weight:800}.row{display:grid;grid-template-columns:1fr;gap:14px;margin-top:20px}.card{border:1px solid rgba(216,173,85,.28);background:rgba(255,255,255,.04);border-radius:22px;padding:18px}.muted{color:#b9aa98}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.reject{background:#2b2b2b;color:#fff}.copy{background:#ffbf6b}a{color:#ffbf6b}</style></head><body><h1>LAYLA NIGHTS — Guest Dashboard</h1><p class="muted">Entrez le mot de passe admin pour voir et gérer les demandes.</p><input id="pwd" type="password" placeholder="Admin password"><button onclick="loadGuests()">Charger</button><div id="list" class="row"></div><script>
-async function api(path,opts={}){opts.headers={...(opts.headers||{}),'Content-Type':'application/json','x-admin-password':pwd.value};const r=await fetch(path,opts);const j=await r.json();if(!r.ok)throw new Error(j.error||'Erreur');return j}
-async function setStatus(ref,status){await api(`/api/guests/${ref}/status`,{method:'POST',body:JSON.stringify({status})});loadGuests()}
-function wa(phone,text){let clean=String(phone).replace(/\D/g,'');return `https://wa.me/${clean}?text=${encodeURIComponent(text)}`}
-async function loadGuests(){list.innerHTML='Chargement...';try{const {guests}=await api('/api/guests');list.innerHTML=guests.map(g=>{const msg=g.status==='approved'?`Votre accès LAYLA NIGHTS est confirmé. Invitation: ${location.origin}/ticket.html?ref=${g.reference}`:`Hello ${g.fullName}, concernant votre demande LAYLA NIGHTS.`;return `<div class="card"><h3>${g.fullName} — ${g.passType}</h3><p class="muted">${g.reference} · ${g.status} · ${g.guests} personne(s)</p><p>Phone: ${g.phone} · Instagram: ${g.instagram||'-'}</p><p>${g.message||''}</p><div class="actions"><button onclick="setStatus('${g.reference}','approved')">Approve</button><button class="reject" onclick="setStatus('${g.reference}','rejected')">Reject</button><button class="reject" onclick="setStatus('${g.reference}','pending')">Pending</button><a class="copy" style="padding:12px 14px;border-radius:12px;text-decoration:none;color:#140e08;font-weight:800" target="_blank" href="${wa(g.phone,msg)}">WhatsApp</a>${g.qrUrl?`<a target="_blank" href="${g.qrUrl}">Ticket QR</a>`:''}</div></div>`}).join('')||'<p>Aucune demande.</p>'}catch(e){list.innerHTML=`<p>${e.message}</p>`}}
-</script></body></html>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LAYLA Admin</title>
+  <style>
+    body{font-family:Inter,system-ui,sans-serif;background:#050505;color:#f7f0e6;padding:24px}
+    h1{color:#d8ad55}
+    input,button{padding:12px 14px;border-radius:12px;border:1px solid rgba(216,173,85,.35);background:#111;color:#fff}
+    button{cursor:pointer;background:#d8ad55;color:#140e08;font-weight:800}
+    .row{display:grid;grid-template-columns:1fr;gap:14px;margin-top:20px}
+    .card{border:1px solid rgba(216,173,85,.28);background:rgba(255,255,255,.04);border-radius:22px;padding:18px}
+    .muted{color:#b9aa98}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .reject{background:#2b2b2b;color:#fff}
+    .btnlink{padding:12px 14px;border-radius:12px;text-decoration:none;color:#140e08;font-weight:800;background:#ffbf6b}
+    a{color:#ffbf6b}
+  </style>
+</head>
+<body>
+  <h1>LAYLA NIGHTS — Guest Dashboard</h1>
+  <p class="muted">Entrez le mot de passe admin pour voir et gérer les demandes.</p>
+
+  <input id="pwd" type="password" placeholder="Admin password" />
+  <button onclick="loadGuests()">Charger</button>
+
+  <div id="list" class="row"></div>
+
+  <script>
+    async function api(path, opts = {}) {
+      opts.headers = {
+        ...(opts.headers || {}),
+        'Content-Type': 'application/json',
+        'x-admin-password': document.getElementById('pwd').value
+      };
+
+      const r = await fetch(path, opts);
+      const j = await r.json();
+
+      if (!r.ok) {
+        throw new Error(j.error || 'Erreur');
+      }
+
+      return j;
+    }
+
+    async function setStatus(ref, status) {
+      await api('/api/guests/' + ref + '/status', {
+        method: 'POST',
+        body: JSON.stringify({ status })
+      });
+
+      loadGuests();
+    }
+
+    function wa(phone, text) {
+      const clean = String(phone || '').replace(/\D/g, '');
+      return 'https://wa.me/' + clean + '?text=' + encodeURIComponent(text);
+    }
+
+    async function loadGuests() {
+      const list = document.getElementById('list');
+      list.innerHTML = 'Chargement...';
+
+      try {
+        const data = await api('/api/guests');
+        const guests = data.guests || [];
+
+        if (!guests.length) {
+          list.innerHTML = '<p>Aucune demande.</p>';
+          return;
+        }
+
+        list.innerHTML = guests.map(g => {
+          const ticketUrl = location.origin + '/ticket.html?ref=' + g.reference;
+
+          const msg = g.status === 'approved'
+            ? 'Votre accès LAYLA NIGHTS est confirmé. Invitation: ' + ticketUrl
+            : 'Hello ' + g.fullName + ', concernant votre demande LAYLA NIGHTS.';
+
+          return `
+            <div class="card">
+              <h3>${g.fullName} — ${g.passType}</h3>
+              <p class="muted">${g.reference} · ${g.status} · ${g.guests} personne(s)</p>
+              <p>Phone: ${g.phone || '-'} · Instagram: ${g.instagram || '-'}</p>
+              <p>${g.message || ''}</p>
+
+              <div class="actions">
+                <button onclick="setStatus('${g.reference}','approved')">Approve</button>
+                <button class="reject" onclick="setStatus('${g.reference}','rejected')">Reject</button>
+                <button class="reject" onclick="setStatus('${g.reference}','pending')">Pending</button>
+
+                <a class="btnlink" target="_blank" href="${wa(g.phone, msg)}">WhatsApp</a>
+                <a class="btnlink" target="_blank" href="${ticketUrl}">Ticket QR</a>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+      } catch (e) {
+        list.innerHTML = '<p>' + e.message + '</p>';
+      }
+    }
+  </script>
+</body>
+</html>
