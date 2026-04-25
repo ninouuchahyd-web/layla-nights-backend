@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 
@@ -13,6 +14,8 @@ const whatsappNumber = (process.env.WHATSAPP_NUMBER || '212600000000').trim();
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim().replace(/\/$/, '');
 const SUPABASE_KEY = (process.env.SUPABASE_KEY || '').trim();
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 app.use(cors());
 app.use(express.json());
@@ -52,44 +55,6 @@ function toGuest(row) {
   };
 }
 
-async function supabaseRequest(endpoint, options = {}) {
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    throw new Error('Missing SUPABASE_URL or SUPABASE_KEY in Render Environment.');
-  }
-
-  const url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
-
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-      ...(options.headers || {})
-    }
-  });
-
-  const text = await response.text();
-
-  let data = null;
-
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = text;
-    }
-  }
-
-  if (!response.ok) {
-    console.error('SUPABASE ERROR:', data);
-    throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
-  }
-
-  return data;
-}
-
 app.get('/api/config', (_req, res) => {
   res.json({
     whatsappNumber,
@@ -99,17 +64,20 @@ app.get('/api/config', (_req, res) => {
 
 app.get('/api/test-supabase', async (_req, res) => {
   try {
-    const rows = await supabaseRequest(
-      'tickets?select=*&limit=1',
-      { method: 'GET' }
-    );
+    const { data, error } = await supabase
+      .from('tickets')
+      .select('*')
+      .limit(1);
+
+    if (error) {
+      throw error;
+    }
 
     res.json({
       success: true,
       supabaseUrl: SUPABASE_URL,
-      rows
+      rows: data
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -131,9 +99,9 @@ app.post('/api/access-request', async (req, res) => {
 
     const reference = makeReference('LAYLA');
 
-    const inserted = await supabaseRequest('tickets', {
-      method: 'POST',
-      body: JSON.stringify({
+    const { data, error } = await supabase
+      .from('tickets')
+      .insert({
         reference,
         full_name: String(fullName).trim(),
         phone: String(phone).trim(),
@@ -144,13 +112,17 @@ app.post('/api/access-request', async (req, res) => {
         status: 'pending',
         ticket_status: 'unused'
       })
-    });
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
 
     res.json({
       success: true,
-      guest: toGuest(inserted[0])
+      guest: toGuest(data)
     });
-
   } catch (error) {
     console.error('ACCESS REQUEST ERROR:', error.message);
     res.status(500).json({
@@ -165,15 +137,19 @@ app.get('/api/guests', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized.' });
     }
 
-    const rows = await supabaseRequest(
-      'tickets?select=*&order=created_at.desc&limit=500',
-      { method: 'GET' }
-    );
+    const { data, error } = await supabase
+      .from('tickets')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    if (error) {
+      throw error;
+    }
 
     res.json({
-      guests: rows.map(toGuest)
+      guests: data.map(toGuest)
     });
-
   } catch (error) {
     console.error('GUESTS ERROR:', error.message);
     res.status(500).json({
@@ -194,26 +170,20 @@ app.post('/api/guests/:reference/status', async (req, res) => {
       return res.status(400).json({ error: 'Invalid status.' });
     }
 
-    const reference = req.params.reference;
+    const { data, error } = await supabase
+      .from('tickets')
+      .update({ status })
+      .eq('reference', req.params.reference)
+      .select()
+      .single();
 
-    const updated = await supabaseRequest(
-      `tickets?reference=eq.${encodeURIComponent(reference)}`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify({
-          status
-        })
-      }
-    );
-
-    if (!updated || !updated.length) {
-      return res.status(404).json({ error: 'Guest not found.' });
+    if (error) {
+      throw error;
     }
 
     res.json({
-      guest: toGuest(updated[0])
+      guest: toGuest(data)
     });
-
   } catch (error) {
     console.error('STATUS ERROR:', error.message);
     res.status(500).json({
@@ -224,18 +194,17 @@ app.post('/api/guests/:reference/status', async (req, res) => {
 
 app.get('/api/ticket/:reference', async (req, res) => {
   try {
-    const reference = req.params.reference;
+    const { data, error } = await supabase
+      .from('tickets')
+      .select('*')
+      .eq('reference', req.params.reference)
+      .single();
 
-    const rows = await supabaseRequest(
-      `tickets?reference=eq.${encodeURIComponent(reference)}&select=*`,
-      { method: 'GET' }
-    );
-
-    if (!rows || !rows.length) {
+    if (error || !data) {
       return res.status(404).json({ error: 'Invitation not found.' });
     }
 
-    const guest = toGuest(rows[0]);
+    const guest = toGuest(data);
 
     if (guest.status !== 'approved') {
       return res.status(403).json({
@@ -244,7 +213,6 @@ app.get('/api/ticket/:reference', async (req, res) => {
     }
 
     res.json({ guest });
-
   } catch (error) {
     console.error('TICKET ERROR:', error.message);
     res.status(500).json({
@@ -259,7 +227,7 @@ app.post('/api/scan', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized.' });
     }
 
-    const { reference } = req.body || {};
+    const reference = String(req.body.reference || '').trim();
 
     if (!reference) {
       return res.status(400).json({
@@ -267,20 +235,19 @@ app.post('/api/scan', async (req, res) => {
       });
     }
 
-    const cleanReference = String(reference).trim();
+    const { data: ticket, error: findError } = await supabase
+      .from('tickets')
+      .select('*')
+      .eq('reference', reference)
+      .single();
 
-    const rows = await supabaseRequest(
-      `tickets?reference=eq.${encodeURIComponent(cleanReference)}&select=*`,
-      { method: 'GET' }
-    );
-
-    if (!rows || !rows.length) {
+    if (findError || !ticket) {
       return res.status(404).json({
         error: 'Invitation not found.'
       });
     }
 
-    const guest = toGuest(rows[0]);
+    const guest = toGuest(ticket);
 
     if (guest.status !== 'approved') {
       return res.status(400).json({
@@ -296,22 +263,24 @@ app.post('/api/scan', async (req, res) => {
       });
     }
 
-    const updated = await supabaseRequest(
-      `tickets?reference=eq.${encodeURIComponent(cleanReference)}`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify({
-          ticket_status: 'used',
-          used_at: new Date().toISOString()
-        })
-      }
-    );
+    const { data, error } = await supabase
+      .from('tickets')
+      .update({
+        ticket_status: 'used',
+        used_at: new Date().toISOString()
+      })
+      .eq('reference', reference)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
 
     res.json({
       success: true,
-      guest: toGuest(updated[0])
+      guest: toGuest(data)
     });
-
   } catch (error) {
     console.error('SCAN ERROR:', error.message);
     res.status(500).json({
