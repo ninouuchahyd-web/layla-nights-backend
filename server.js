@@ -7,12 +7,12 @@ const path = require('path');
 const app = express();
 
 const port = Number(process.env.PORT || 4242);
-const appUrl = process.env.APP_URL || `http://localhost:${port}`;
-const adminPassword = process.env.ADMIN_PASSWORD || 'Ksgc9122';
-const whatsappNumber = process.env.WHATSAPP_NUMBER || '212600000000';
+const appUrl = (process.env.APP_URL || `http://localhost:${port}`).trim();
+const adminPassword = (process.env.ADMIN_PASSWORD || 'Ksgc9122').trim();
+const whatsappNumber = (process.env.WHATSAPP_NUMBER || '212600000000').trim();
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim().replace(/\/$/, '');
+const SUPABASE_KEY = (process.env.SUPABASE_KEY || '').trim();
 
 app.use(cors());
 app.use(express.json());
@@ -57,7 +57,9 @@ async function supabaseRequest(endpoint, options = {}) {
     throw new Error('Missing SUPABASE_URL or SUPABASE_KEY in Render Environment.');
   }
 
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, {
+  const url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
+
+  const response = await fetch(url, {
     ...options,
     headers: {
       apikey: SUPABASE_KEY,
@@ -93,6 +95,28 @@ app.get('/api/config', (_req, res) => {
     whatsappNumber,
     appUrl
   });
+});
+
+app.get('/api/test-supabase', async (_req, res) => {
+  try {
+    const rows = await supabaseRequest(
+      'tickets?select=*&limit=1',
+      { method: 'GET' }
+    );
+
+    res.json({
+      success: true,
+      supabaseUrl: SUPABASE_URL,
+      rows
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      supabaseUrl: SUPABASE_URL,
+      error: error.message
+    });
+  }
 });
 
 app.post('/api/access-request', async (req, res) => {
@@ -299,4 +323,5 @@ app.post('/api/scan', async (req, res) => {
 app.listen(port, () => {
   console.log(`Layla Nights running on port ${port}`);
   console.log(`Public URL: ${appUrl}`);
+  console.log(`Supabase URL: ${SUPABASE_URL}`);
 });
