@@ -2,120 +2,175 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>LAYLA Scan</title>
 
   <script src="https://unpkg.com/html5-qrcode"></script>
 
   <style>
-    body{font-family:Inter,system-ui,sans-serif;background:#050505;color:#f7f0e6;padding:24px}
-    h1{color:#d8ad55}
-    input,button{width:100%;max-width:520px;margin:8px 0;padding:14px;border-radius:14px;border:1px solid rgba(216,173,85,.35);background:#111;color:#fff}
-    button{background:#d8ad55;color:#140e08;font-weight:900;cursor:pointer}
-    .box{margin-top:18px;padding:18px;border-radius:18px;border:1px solid rgba(216,173,85,.28);max-width:520px}
-    .ok{color:#78ff9b}
-    .bad{color:#ff7777}
-    #reader{width:100%;max-width:520px;margin-top:18px;border-radius:18px;overflow:hidden}
+    body {
+      font-family: Inter, system-ui;
+      background: #050505;
+      color: #f7f0e6;
+      padding: 24px;
+      text-align: center;
+    }
+
+    h1 { color: #d8ad55 }
+
+    input, button {
+      width: 100%;
+      max-width: 520px;
+      margin: 8px auto;
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(216,173,85,.35);
+      background: #111;
+      color: #fff;
+      display: block;
+    }
+
+    button {
+      background: #d8ad55;
+      color: #140e08;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    #reader {
+      max-width: 520px;
+      margin: 20px auto;
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    #result {
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 18px;
+      font-size: 18px;
+    }
+
+    .ok {
+      background: #0f2e1a;
+      color: #78ff9b;
+    }
+
+    .bad {
+      background: #2e0f0f;
+      color: #ff7777;
+    }
   </style>
 </head>
 
 <body>
-  <h1>LAYLA NIGHTS — Scan entrée</h1>
 
-  <input id="pwd" type="password" placeholder="Admin password" />
-  <button onclick="startCamera()">Démarrer la caméra</button>
+<h1>LAYLA NIGHTS — Scan entrée</h1>
 
-  <div id="reader"></div>
+<input id="pwd" type="password" placeholder="Admin password" />
+<button onclick="startCamera()">Démarrer la caméra</button>
 
-  <input id="ref" placeholder="Référence QR ex: LAYLA-ABC123" autofocus />
-  <button onclick="validateEntry(ref.value)">Valider l’entrée</button>
+<div id="reader"></div>
 
-  <div id="result" class="box">En attente du scan...</div>
+<input id="ref" placeholder="Référence QR ex: LAYLA-ABC123" />
+<button onclick="validateEntry(ref.value)">Valider manuellement</button>
 
-  <script>
-    let scannerStarted = false;
-    let lastScanned = "";
+<div id="result">En attente du scan...</div>
 
-    async function validateEntry(reference) {
-      reference = String(reference || "").trim();
+<script>
+let scannerInstance = null;
+let isProcessing = false;
 
-      if (!reference) {
-        result.innerHTML = '<h2 class="bad">Référence vide</h2>';
-        return;
-      }
+// 🔊 son
+function beep(success = true) {
+  const audio = new Audio(success 
+    ? "https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"
+    : "https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
+  );
+  audio.play();
+}
 
-      result.textContent = 'Validation...';
+async function validateEntry(reference) {
+  if (!reference) return;
 
-      try {
-        const r = await fetch('/api/scan', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-admin-password': pwd.value
-          },
-          body: JSON.stringify({ reference })
-        });
+  result.innerText = "Validation...";
 
-        const j = await r.json();
+  try {
+    const r = await fetch('/api/scan', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-password': pwd.value
+      },
+      body: JSON.stringify({ reference })
+    });
 
-        if (!r.ok) {
-          result.innerHTML = `
-            <h2 class="bad">Refusé</h2>
-            <p>${j.error || 'Erreur'}</p>
-            ${j.guest ? `<p>${j.guest.fullName} · ${j.guest.passType}</p>` : ''}
-          `;
-          return;
-        }
+    const j = await r.json();
 
-        result.innerHTML = `
-          <h2 class="ok">Validé</h2>
-          <p>${j.guest.fullName}</p>
-          <p>${j.guest.passType} · ${j.guest.guests} personne(s)</p>
-          <p>${j.guest.reference}</p>
-        `;
-
-        ref.value = '';
-        ref.focus();
-
-      } catch (e) {
-        result.innerHTML = `<h2 class="bad">Erreur</h2><p>${e.message}</p>`;
-      }
+    if (!r.ok) {
+      result.className = "bad";
+      result.innerHTML = `<h2>❌ Refusé</h2><p>${j.error}</p>`;
+      beep(false);
+      return;
     }
 
-    function extractReference(decodedText) {
-      try {
-        const url = new URL(decodedText);
-        return url.searchParams.get('ref') || decodedText;
-      } catch {
-        return decodedText;
-      }
-    }
+    result.className = "ok";
+    result.innerHTML = `
+      <h2>✅ Validé</h2>
+      <p>${j.guest.fullName}</p>
+      <p>${j.guest.passType} · ${j.guest.guests} personne(s)</p>
+    `;
 
-    function onScanSuccess(decodedText) {
-      const reference = extractReference(decodedText);
+    beep(true);
 
-      if (reference === lastScanned) return;
-      lastScanned = reference;
+  } catch (e) {
+    result.className = "bad";
+    result.innerHTML = `<h2>Erreur</h2><p>${e.message}</p>`;
+    beep(false);
+  }
+}
 
-      ref.value = reference;
-      validateEntry(reference);
+function extractReference(text) {
+  try {
+    const url = new URL(text);
+    return url.searchParams.get('ref') || text;
+  } catch {
+    return text;
+  }
+}
 
-      setTimeout(() => {
-        lastScanned = "";
-      }, 3000);
-    }
+function onScanSuccess(decodedText) {
+  if (isProcessing) return;
 
-    function startCamera() {
-      if (scannerStarted) return;
+  isProcessing = true;
 
-      const scanner = new Html5QrcodeScanner("reader", {
-        fps: 10,
-        qrbox: 250
-      });
+  const refValue = extractReference(decodedText);
+  ref.value = refValue;
 
-      scanner.render(onScanSuccess);
-      scannerStarted = true;
-    }
-  </script>
+  validateEntry(refValue);
+
+  // stop caméra après scan
+  if (scannerInstance) {
+    scannerInstance.clear();
+  }
+
+  // reset après 4 sec
+  setTimeout(() => {
+    isProcessing = false;
+  }, 4000);
+}
+
+function startCamera() {
+  if (scannerInstance) return;
+
+  scannerInstance = new Html5QrcodeScanner("reader", {
+    fps: 10,
+    qrbox: 250
+  });
+
+  scannerInstance.render(onScanSuccess);
+}
+</script>
+
 </body>
 </html>
