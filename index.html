@@ -6,190 +6,99 @@
 <title>LAYLA NIGHTS</title>
 
 <style>
-:root{
-  --bg:#050505;
-  --gold:#d8ad55;
-  --amber:#ffbf6b;
-  --text:#f7f0e6;
-  --muted:#b9aa98;
-  --border:rgba(255,191,107,.25);
+body {
+  font-family: Arial;
+  background: black;
+  color: white;
+  text-align: center;
+  padding: 40px;
 }
 
-*{margin:0;padding:0;box-sizing:border-box}
-
-body{
-  font-family:Inter,system-ui;
-  background:#050505;
-  color:var(--text);
+input, select, textarea {
+  width: 300px;
+  padding: 12px;
+  margin: 10px;
+  border-radius: 10px;
+  border: 1px solid gold;
+  background: #111;
+  color: white;
 }
 
-/* 🌫️ atmosphere */
-body::after{
-  content:"";
-  position:fixed;
-  inset:0;
-  background:radial-gradient(circle at 70% 80%, rgba(255,191,107,0.08), transparent 60%);
-  pointer-events:none;
+button {
+  padding: 12px 20px;
+  border-radius: 20px;
+  border: none;
+  background: gold;
+  font-weight: bold;
+  cursor: pointer;
 }
 
-/* 🎭 HERO */
-.hero{
-  min-height:100vh;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  position:relative;
-
-  background:
-    linear-gradient(to bottom, rgba(0,0,0,.6), rgba(0,0,0,.9)),
-    url("https://images.unsplash.com/photo-1507525428034-b723cf961d3e") center/cover no-repeat;
-}
-
-.hero::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:radial-gradient(circle at 50% 30%, rgba(255,191,107,.25), transparent 60%);
-}
-
-/* 🧠 content */
-.hero-content{
-  position:relative;
-  z-index:2;
-}
-
-h1{
-  font-size:clamp(60px,10vw,120px);
-  letter-spacing:.1em;
-}
-
-.subtitle{
-  margin-top:20px;
-  color:var(--muted);
-}
-
-.date{
-  margin-top:20px;
-  display:inline-block;
-  padding:10px 20px;
-  border:1px solid var(--border);
-  border-radius:999px;
-  color:var(--amber);
-}
-
-/* 🎇 BUTTON */
-.btn{
-  margin-top:20px;
-  padding:15px 25px;
-  border-radius:999px;
-  border:none;
-  cursor:pointer;
-  font-weight:800;
-}
-
-.btn-primary{
-  background:linear-gradient(135deg,#d8ad55,#ffbf6b);
-  box-shadow:0 0 25px rgba(255,191,107,.3);
-}
-
-.btn:hover{
-  transform:translateY(-3px);
-}
-
-/* 💎 CARDS */
-.card{
-  margin:40px;
-  padding:30px;
-  border-radius:25px;
-  background:rgba(20,18,16,.6);
-  backdrop-filter:blur(15px);
-  border:1px solid var(--border);
-  transition:.3s;
-}
-
-.card:hover{
-  transform:translateY(-6px);
-  box-shadow:0 30px 100px rgba(255,191,107,.2);
-}
-
-section{
-  padding:80px 20px;
-  text-align:center;
-}
-
-h2{
-  font-size:40px;
-  margin-bottom:20px;
-}
-
-/* 📱 form */
-input,select,textarea{
-  width:100%;
-  margin:10px 0;
-  padding:14px;
-  border-radius:12px;
-  border:1px solid var(--border);
-  background:#111;
-  color:white;
-}
-
-form{
-  max-width:500px;
-  margin:auto;
+#status {
+  margin-top: 20px;
 }
 </style>
 </head>
 
 <body>
 
-<section class="hero">
-  <div class="hero-content">
-    <h1>LAYLA NIGHTS</h1>
-    <p class="subtitle">Afterparty exclusive · accès privé</p>
-    <div class="date">03.05.2026</div>
-    <br>
-    <a href="#form"><button class="btn btn-primary">Accéder à l’expérience</button></a>
-  </div>
-</section>
+<h1>LAYLA NIGHTS</h1>
 
-<section>
-  <h2>L’expérience</h2>
-  <div class="card">
-    Afro House · Deep House · énergie hypnotique · ambiance luxe
-  </div>
-</section>
+<form id="form">
+  <input id="name" placeholder="Nom" required><br>
+  <input id="phone" placeholder="Téléphone" required><br>
+  <input id="instagram" placeholder="Instagram"><br>
 
-<section>
-  <h2>Accès</h2>
+  <select id="passType">
+    <option value="standard">Standard</option>
+    <option value="vip">VIP</option>
+  </select><br>
 
-  <div class="card">
-    <h3>Standard</h3>
-    <p>300 DHS</p>
-  </div>
+  <textarea id="message" placeholder="Message"></textarea><br>
 
-  <div class="card">
-    <h3>VIP</h3>
-    <p>600 DHS</p>
-  </div>
-</section>
+  <button type="submit">Envoyer</button>
+</form>
 
-<section id="form">
-  <h2>Demande d’accès</h2>
+<div id="status"></div>
 
-  <form>
-    <input placeholder="Nom complet">
-    <input placeholder="Téléphone">
-    <input placeholder="Instagram">
-    <select>
-      <option>Standard</option>
-      <option>VIP</option>
-    </select>
-    <textarea placeholder="Message"></textarea>
+<script>
+document.getElementById("form").addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-    <button class="btn btn-primary">Envoyer</button>
-  </form>
-</section>
+  const status = document.getElementById("status");
+  status.innerText = "Envoi...";
+
+  try {
+    const res = await fetch("https://layla-nights-backend-1.onrender.com/api/request", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        fullName: name.value,
+        phone: phone.value,
+        instagram: instagram.value,
+        passType: passType.value,
+        message: message.value
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      status.innerText = "Erreur ❌";
+      console.log(data);
+      return;
+    }
+
+    status.innerText = "Envoyé ✅";
+    form.reset();
+
+  } catch (err) {
+    console.error(err);
+    status.innerText = "Erreur serveur ❌";
+  }
+});
+</script>
 
 </body>
 </html>
