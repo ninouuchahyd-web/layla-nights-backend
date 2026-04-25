@@ -2,53 +2,78 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LAYLA Scan</title>
 
   <script src="https://unpkg.com/html5-qrcode"></script>
 
   <style>
     body {
-      font-family: Inter, system-ui;
+      margin: 0;
+      padding: 24px;
+      font-family: Inter, system-ui, Arial, sans-serif;
       background: #050505;
       color: #f7f0e6;
-      padding: 24px;
       text-align: center;
     }
 
-    h1 { color: #d8ad55 }
+    h1 {
+      color: #d8ad55;
+      font-size: 34px;
+      line-height: 1.1;
+      margin: 40px 0 24px;
+    }
+
+    .wrap {
+      max-width: 520px;
+      margin: auto;
+    }
 
     input, button {
       width: 100%;
-      max-width: 520px;
-      margin: 8px auto;
-      padding: 14px;
-      border-radius: 14px;
+      padding: 16px;
+      margin: 8px 0;
+      border-radius: 16px;
       border: 1px solid rgba(216,173,85,.35);
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    input {
       background: #111;
       color: #fff;
-      display: block;
     }
 
     button {
-      background: #d8ad55;
+      background: linear-gradient(135deg, #d8ad55, #ffbf6b);
       color: #140e08;
       font-weight: 900;
       cursor: pointer;
+      border: none;
     }
 
     #reader {
-      max-width: 520px;
-      margin: 20px auto;
+      margin-top: 18px;
       border-radius: 18px;
       overflow: hidden;
     }
 
     #result {
-      margin-top: 20px;
-      padding: 20px;
-      border-radius: 18px;
+      margin-top: 18px;
+      padding: 22px;
+      border-radius: 22px;
       font-size: 18px;
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+
+    .neutral {
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(216,173,85,.25);
+      color: #b9aa98;
     }
 
     .ok {
@@ -57,120 +82,131 @@
     }
 
     .bad {
-      background: #2e0f0f;
+      background: #351012;
       color: #ff7777;
+    }
+
+    .small {
+      font-size: 13px;
+      opacity: .75;
+      margin-top: 8px;
     }
   </style>
 </head>
 
 <body>
+  <div class="wrap">
+    <h1>LAYLA NIGHTS<br>Scan entrée</h1>
 
-<h1>LAYLA NIGHTS — Scan entrée</h1>
+    <button onclick="startCamera()">Scanner avec caméra</button>
 
-<input id="pwd" type="password" placeholder="Admin password" />
-<button onclick="startCamera()">Démarrer la caméra</button>
+    <div id="reader"></div>
 
-<div id="reader"></div>
+    <input id="ref" placeholder="Ou entrer la référence manuellement" />
+    <button onclick="validateEntry(ref.value)">Valider</button>
 
-<input id="ref" placeholder="Référence QR ex: LAYLA-ABC123" />
-<button onclick="validateEntry(ref.value)">Valider manuellement</button>
+    <div id="result" class="neutral">
+      En attente du scan
+    </div>
+  </div>
 
-<div id="result">En attente du scan...</div>
+  <script>
+    const ADMIN_PASSWORD = "Ksgc9122";
 
-<script>
-let scannerInstance = null;
-let isProcessing = false;
+    let scanner = null;
+    let locked = false;
 
-// 🔊 son
-function beep(success = true) {
-  const audio = new Audio(success 
-    ? "https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"
-    : "https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
-  );
-  audio.play();
-}
-
-async function validateEntry(reference) {
-  if (!reference) return;
-
-  result.innerText = "Validation...";
-
-  try {
-    const r = await fetch('/api/scan', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-admin-password': pwd.value
-      },
-      body: JSON.stringify({ reference })
-    });
-
-    const j = await r.json();
-
-    if (!r.ok) {
-      result.className = "bad";
-      result.innerHTML = `<h2>❌ Refusé</h2><p>${j.error}</p>`;
-      beep(false);
-      return;
+    function show(type, title, text = "") {
+      result.className = type;
+      result.innerHTML = `
+        <h2>${title}</h2>
+        ${text ? `<p>${text}</p>` : ""}
+      `;
     }
 
-    result.className = "ok";
-    result.innerHTML = `
-      <h2>✅ Validé</h2>
-      <p>${j.guest.fullName}</p>
-      <p>${j.guest.passType} · ${j.guest.guests} personne(s)</p>
-    `;
+    function extractReference(value) {
+      value = String(value || "").trim();
 
-    beep(true);
+      try {
+        const url = new URL(value);
+        return url.searchParams.get("ref") || value;
+      } catch {
+        return value;
+      }
+    }
 
-  } catch (e) {
-    result.className = "bad";
-    result.innerHTML = `<h2>Erreur</h2><p>${e.message}</p>`;
-    beep(false);
-  }
-}
+    async function validateEntry(value) {
+      const reference = extractReference(value);
 
-function extractReference(text) {
-  try {
-    const url = new URL(text);
-    return url.searchParams.get('ref') || text;
-  } catch {
-    return text;
-  }
-}
+      if (!reference) {
+        show("bad", "❌ Référence vide", "Scanne un QR ou entre une référence.");
+        return;
+      }
 
-function onScanSuccess(decodedText) {
-  if (isProcessing) return;
+      show("neutral", "Validation...", reference);
 
-  isProcessing = true;
+      try {
+        const response = await fetch("/api/scan", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-password": ADMIN_PASSWORD
+          },
+          body: JSON.stringify({ reference })
+        });
 
-  const refValue = extractReference(decodedText);
-  ref.value = refValue;
+        const data = await response.json();
 
-  validateEntry(refValue);
+        if (!response.ok) {
+          show("bad", "❌ Refusé", data.error || "Ticket invalide");
+          return;
+        }
 
-  // stop caméra après scan
-  if (scannerInstance) {
-    scannerInstance.clear();
-  }
+        show(
+          "ok",
+          "✅ Entrée validée",
+          `${data.guest.fullName}<br>${data.guest.passType} · ${data.guest.guests} personne(s)<br><span class="small">${data.guest.reference}</span>`
+        );
 
-  // reset après 4 sec
-  setTimeout(() => {
-    isProcessing = false;
-  }, 4000);
-}
+        ref.value = "";
 
-function startCamera() {
-  if (scannerInstance) return;
+      } catch (error) {
+        show("bad", "❌ Erreur serveur", "Réessaie dans quelques secondes.");
+      }
+    }
 
-  scannerInstance = new Html5QrcodeScanner("reader", {
-    fps: 10,
-    qrbox: 250
-  });
+    function onScanSuccess(decodedText) {
+      if (locked) return;
 
-  scannerInstance.render(onScanSuccess);
-}
-</script>
+      locked = true;
 
+      const reference = extractReference(decodedText);
+      ref.value = reference;
+
+      validateEntry(reference);
+
+      if (scanner) {
+        scanner.clear();
+        scanner = null;
+      }
+
+      setTimeout(() => {
+        locked = false;
+      }, 3000);
+    }
+
+    function startCamera() {
+      if (scanner) return;
+
+      show("neutral", "Caméra ouverte", "Scanne le QR ticket.");
+
+      scanner = new Html5QrcodeScanner("reader", {
+        fps: 10,
+        qrbox: 250
+      });
+
+      scanner.render(onScanSuccess);
+    }
+  </script>
 </body>
 </html>
