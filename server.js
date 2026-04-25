@@ -2,7 +2,6 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
-const Datastore = require('nedb-promises');
 const path = require('path');
 
 const app = express();
@@ -12,12 +11,8 @@ const appUrl = process.env.APP_URL || `http://localhost:${port}`;
 const adminPassword = process.env.ADMIN_PASSWORD || 'Ksgc9122';
 const whatsappNumber = process.env.WHATSAPP_NUMBER || '212600000000';
 
-const db = Datastore.create({
-  filename: path.join(__dirname, 'guests.db'),
-  autoload: true
-});
-
-db.ensureIndex({ fieldName: 'reference', unique: true }).catch(() => {});
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
 app.use(cors());
 app.use(express.json());
@@ -33,6 +28,64 @@ function makeReference(prefix = 'LAYLA') {
 
 function isAdmin(req) {
   return req.headers['x-admin-password'] === adminPassword;
+}
+
+function toGuest(row) {
+  return {
+    id: row.id,
+    reference: row.reference,
+    fullName: row.full_name,
+    phone: row.phone,
+    instagram: row.instagram || '',
+    passType: row.pass_type,
+    guests: row.guests || 1,
+    message: row.message || '',
+    status: row.status || 'pending',
+    qrUrl:
+      row.status === 'approved'
+        ? `${appUrl}/ticket.html?ref=${encodeURIComponent(row.reference)}`
+        : '',
+    used: row.ticket_status === 'used',
+    usedAt: row.used_at || '',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at || row.created_at
+  };
+}
+
+async function supabaseRequest(endpoint, options = {}) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    throw new Error('Missing SUPABASE_URL or SUPABASE_KEY in Render Environment.');
+  }
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, {
+    ...options,
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+      ...(options.headers || {})
+    }
+  });
+
+  const text = await response.text();
+
+  let data = null;
+
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+  }
+
+  if (!response.ok) {
+    console.error('SUPABASE ERROR:', data);
+    throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
+  }
+
+  return data;
 }
 
 app.get('/api/config', (_req, res) => {
@@ -52,30 +105,30 @@ app.post('/api/access-request', async (req, res) => {
       });
     }
 
-    const doc = {
-      reference: makeReference('LAYLA'),
-      fullName: String(fullName).trim(),
-      phone: String(phone).trim(),
-      instagram: instagram ? String(instagram).trim() : '',
-      passType: String(passType).trim(),
-      guests: Math.max(1, Math.min(10, Number(guests || 1))),
-      message: message ? String(message).trim() : '',
-      status: 'pending',
-      qrUrl: '',
-      used: false,
-      usedAt: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    const reference = makeReference('LAYLA');
 
-    const inserted = await db.insert(doc);
+    const inserted = await supabaseRequest('tickets', {
+      method: 'POST',
+      body: JSON.stringify({
+        reference,
+        full_name: String(fullName).trim(),
+        phone: String(phone).trim(),
+        instagram: instagram ? String(instagram).trim() : '',
+        pass_type: String(passType).trim(),
+        guests: Math.max(1, Math.min(10, Number(guests || 1))),
+        message: message ? String(message).trim() : '',
+        status: 'pending',
+        ticket_status: 'unused'
+      })
+    });
 
     res.json({
       success: true,
-      guest: inserted
+      guest: toGuest(inserted[0])
     });
 
   } catch (error) {
+    console.error('ACCESS REQUEST ERROR:', error.message);
     res.status(500).json({
       error: error.message || 'Unable to register access request.'
     });
@@ -88,11 +141,17 @@ app.get('/api/guests', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized.' });
     }
 
-    const guests = await db.find({}).sort({ createdAt: -1 }).limit(500);
+    const rows = await supabaseRequest(
+      'tickets?select=*&order=created_at.desc&limit=500',
+      { method: 'GET' }
+    );
 
-    res.json({ guests });
+    res.json({
+      guests: rows.map(toGuest)
+    });
 
   } catch (error) {
+    console.error('GUESTS ERROR:', error.message);
     res.status(500).json({
       error: error.message || 'Unable to list guests.'
     });
@@ -113,33 +172,26 @@ app.post('/api/guests/:reference/status', async (req, res) => {
 
     const reference = req.params.reference;
 
-    const existingGuest = await db.findOne({ reference });
-
-    if (!existingGuest) {
-      return res.status(404).json({ error: 'Guest not found.' });
-    }
-
-    const qrUrl =
-      status === 'approved'
-        ? `${appUrl}/ticket.html?ref=${encodeURIComponent(reference)}`
-        : '';
-
-    await db.update(
-      { reference },
+    const updated = await supabaseRequest(
+      `tickets?reference=eq.${encodeURIComponent(reference)}`,
       {
-        $set: {
-          status,
-          qrUrl,
-          updatedAt: new Date().toISOString()
-        }
+        method: 'PATCH',
+        body: JSON.stringify({
+          status
+        })
       }
     );
 
-    const guest = await db.findOne({ reference });
+    if (!updated || !updated.length) {
+      return res.status(404).json({ error: 'Guest not found.' });
+    }
 
-    res.json({ guest });
+    res.json({
+      guest: toGuest(updated[0])
+    });
 
   } catch (error) {
+    console.error('STATUS ERROR:', error.message);
     res.status(500).json({
       error: error.message || 'Unable to update guest.'
     });
@@ -148,13 +200,18 @@ app.post('/api/guests/:reference/status', async (req, res) => {
 
 app.get('/api/ticket/:reference', async (req, res) => {
   try {
-    const guest = await db.findOne({
-      reference: req.params.reference
-    });
+    const reference = req.params.reference;
 
-    if (!guest) {
+    const rows = await supabaseRequest(
+      `tickets?reference=eq.${encodeURIComponent(reference)}&select=*`,
+      { method: 'GET' }
+    );
+
+    if (!rows || !rows.length) {
       return res.status(404).json({ error: 'Invitation not found.' });
     }
+
+    const guest = toGuest(rows[0]);
 
     if (guest.status !== 'approved') {
       return res.status(403).json({
@@ -162,18 +219,10 @@ app.get('/api/ticket/:reference', async (req, res) => {
       });
     }
 
-    res.json({
-      guest: {
-        reference: guest.reference,
-        fullName: guest.fullName,
-        passType: guest.passType,
-        guests: guest.guests,
-        used: guest.used,
-        usedAt: guest.usedAt
-      }
-    });
+    res.json({ guest });
 
   } catch (error) {
+    console.error('TICKET ERROR:', error.message);
     res.status(500).json({
       error: error.message || 'Unable to fetch ticket.'
     });
@@ -194,15 +243,20 @@ app.post('/api/scan', async (req, res) => {
       });
     }
 
-    const guest = await db.findOne({
-      reference: String(reference).trim()
-    });
+    const cleanReference = String(reference).trim();
 
-    if (!guest) {
+    const rows = await supabaseRequest(
+      `tickets?reference=eq.${encodeURIComponent(cleanReference)}&select=*`,
+      { method: 'GET' }
+    );
+
+    if (!rows || !rows.length) {
       return res.status(404).json({
         error: 'Invitation not found.'
       });
     }
+
+    const guest = toGuest(rows[0]);
 
     if (guest.status !== 'approved') {
       return res.status(400).json({
@@ -218,27 +272,24 @@ app.post('/api/scan', async (req, res) => {
       });
     }
 
-    await db.update(
-      { reference: guest.reference },
+    const updated = await supabaseRequest(
+      `tickets?reference=eq.${encodeURIComponent(cleanReference)}`,
       {
-        $set: {
-          used: true,
-          usedAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
+        method: 'PATCH',
+        body: JSON.stringify({
+          ticket_status: 'used',
+          used_at: new Date().toISOString()
+        })
       }
     );
 
-    const updated = await db.findOne({
-      reference: guest.reference
-    });
-
     res.json({
       success: true,
-      guest: updated
+      guest: toGuest(updated[0])
     });
 
   } catch (error) {
+    console.error('SCAN ERROR:', error.message);
     res.status(500).json({
       error: error.message || 'Unable to scan invitation.'
     });
@@ -246,6 +297,6 @@ app.post('/api/scan', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Layla Nights Club Mode running on port ${port}`);
+  console.log(`Layla Nights running on port ${port}`);
   console.log(`Public URL: ${appUrl}`);
 });
