@@ -16,15 +16,8 @@
       --border:rgba(216,173,85,.28);
     }
 
-    * {
-      box-sizing:border-box;
-      margin:0;
-      padding:0;
-    }
-
-    html {
-      scroll-behavior:smooth;
-    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html { scroll-behavior:smooth; }
 
     body {
       font-family:Inter,system-ui,sans-serif;
@@ -51,6 +44,61 @@
       pointer-events:none;
       background:radial-gradient(circle at 70% 80%, rgba(255,191,107,.08), transparent 60%);
       z-index:1;
+    }
+
+    .enter-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      background:
+        radial-gradient(circle at center, rgba(216,173,85,.16), transparent 45%),
+        rgba(0,0,0,.92);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .enter-overlay.hidden { display:none; }
+
+    .enter-box {
+      max-width: 520px;
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      padding: 34px 24px;
+      background: rgba(20,18,16,.72);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 30px 120px rgba(0,0,0,.55);
+    }
+
+    .enter-box h2 {
+      color: var(--gold);
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      font-size: clamp(28px, 6vw, 52px);
+    }
+
+    .enter-box p {
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 22px;
+    }
+
+    .music-btn {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 9999;
+      border: 1px solid rgba(224,181,82,.45);
+      background: linear-gradient(135deg, var(--gold), var(--amber));
+      color: #080808;
+      padding: 13px 17px;
+      border-radius: 999px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(224,181,82,.25);
     }
 
     .hero {
@@ -223,17 +271,9 @@
       gap:20px;
     }
 
-    .features {
-      grid-template-columns:repeat(3,1fr);
-    }
-
-    .ticket-grid {
-      grid-template-columns:repeat(2,1fr);
-    }
-
-    .info-grid {
-      grid-template-columns:.9fr 1.1fr;
-    }
+    .features { grid-template-columns:repeat(3,1fr); }
+    .ticket-grid { grid-template-columns:repeat(2,1fr); }
+    .info-grid { grid-template-columns:.9fr 1.1fr; }
 
     .card {
       background:rgba(20,18,16,.72);
@@ -273,9 +313,7 @@
       margin:18px 0;
     }
 
-    .vip {
-      border-color:rgba(255,191,107,.55);
-    }
+    .vip { border-color:rgba(255,191,107,.55); }
 
     .lineup {
       background:
@@ -351,13 +389,6 @@
       margin-bottom:8px;
     }
 
-    .dj-info p {
-      font-size:12px;
-      text-transform:uppercase;
-      letter-spacing:.16em;
-      color:var(--muted);
-    }
-
     .countdown {
       text-align:center;
       background:linear-gradient(to bottom,#050505,#0b0907);
@@ -391,10 +422,7 @@
       letter-spacing:.18em;
     }
 
-    form {
-      display:grid;
-      gap:14px;
-    }
+    form { display:grid; gap:14px; }
 
     input,
     select,
@@ -426,13 +454,8 @@
       min-height:24px;
     }
 
-    .success {
-      color:#78ff9b;
-    }
-
-    .error {
-      color:#ff7777;
-    }
+    .success { color:#78ff9b; }
+    .error { color:#ff7777; }
 
     .sticky-mobile {
       display:none;
@@ -443,9 +466,7 @@
       z-index:50;
     }
 
-    .sticky-mobile .btn {
-      width:100%;
-    }
+    .sticky-mobile .btn { width:100%; }
 
     footer {
       padding:28px 7%;
@@ -460,67 +481,48 @@
     }
 
     @keyframes fadeUp {
-      from {
-        opacity:0;
-        transform:translateY(28px);
-      }
-      to {
-        opacity:1;
-        transform:translateY(0);
-      }
+      from { opacity:0; transform:translateY(28px); }
+      to { opacity:1; transform:translateY(0); }
     }
 
     @media(max-width:1000px) {
-      .lineup-grid {
-        grid-template-columns:repeat(2,1fr);
-      }
-
-      .dj-card {
-        min-height:430px;
-      }
+      .lineup-grid { grid-template-columns:repeat(2,1fr); }
+      .dj-card { min-height:430px; }
     }
 
     @media(max-width:820px) {
-      .nav a {
-        display:none;
-      }
-
+      .nav a { display:none; }
       .features,
       .ticket-grid,
-      .info-grid {
-        grid-template-columns:1fr;
-      }
-
-      .timer {
-        grid-template-columns:repeat(2,1fr);
-      }
-
-      section {
-        padding:76px 20px;
-      }
-
-      .sticky-mobile {
-        display:block;
-      }
-
-      footer {
-        padding-bottom:86px;
-      }
+      .info-grid { grid-template-columns:1fr; }
+      .timer { grid-template-columns:repeat(2,1fr); }
+      section { padding:76px 20px; }
+      .sticky-mobile { display:block; }
+      footer { padding-bottom:86px; }
     }
 
     @media(max-width:520px) {
-      .lineup-grid {
-        grid-template-columns:1fr;
-      }
-
-      .dj-card {
-        min-height:500px;
-      }
+      .lineup-grid { grid-template-columns:1fr; }
+      .dj-card { min-height:500px; }
     }
   </style>
 </head>
 
 <body>
+
+<audio id="bgMusic" loop autoplay playsinline>
+  <source src="music.mp3" type="audio/mpeg">
+</audio>
+
+<div id="enterOverlay" class="enter-overlay">
+  <div class="enter-box">
+    <h2>LAYLA NIGHTS</h2>
+    <p>Enter the afterparty experience with sound.</p>
+    <button id="enterBtn" class="btn btn-primary" type="button">Enter Experience</button>
+  </div>
+</div>
+
+<button id="musicBtn" class="music-btn" type="button">▶ Music</button>
 
 <header class="hero">
   <nav class="nav">
@@ -535,7 +537,6 @@
 
   <div class="hero-content">
     <div class="eyebrow">The Afterparty</div>
-
     <h1>LAYLA<br>NIGHTS</h1>
 
     <p class="subtitle">
@@ -554,7 +555,6 @@
 
 <section id="experience">
   <h2 class="section-title">L’expérience</h2>
-
   <p class="section-lead">
     Afro House chic, Deep House élégante, percussions organiques, voix soul et énergie envoûtante dans un cadre confidentiel.
   </p>
@@ -579,89 +579,54 @@
 
 <section class="lineup" id="lineup">
   <h2 class="section-title">Special DJ Lineup</h2>
-
   <p class="section-lead">
     One night. Five DJs. Deep House, Afrotech, Techno and night vibes.
   </p>
 
   <div class="lineup-grid">
-
     <div class="dj-card">
       <img src="GROOVANO.png" alt="Groovano">
-      <div class="dj-info">
-        <h3>Groovano</h3>
-     
-      </div>
+      <div class="dj-info"><h3>Groovano</h3></div>
     </div>
 
     <div class="dj-card">
       <img src="DUJARATA.jpeg" alt="Dujarata">
-      <div class="dj-info">
-        <h3>Dujarata</h3>
-      
-      </div>
+      <div class="dj-info"><h3>Dujarata</h3></div>
     </div>
 
     <div class="dj-card">
       <img src="MELVIN.jpeg" alt="Melvin">
-      <div class="dj-info">
-        <h3>Melvin</h3>
-      
-      </div>
+      <div class="dj-info"><h3>Melvin</h3></div>
     </div>
 
     <div class="dj-card">
       <img src="EUPHORIA.jpeg" alt="Euphoria">
-      <div class="dj-info">
-        <h3>Euphoria</h3>
-       
-      </div>
+      <div class="dj-info"><h3>Euphoria</h3></div>
     </div>
 
     <div class="dj-card">
       <img src="MOK.jpeg" alt="M.O.K">
-      <div class="dj-info">
-        <h3>M.O.K</h3>
-       
-      </div>
+      <div class="dj-info"><h3>M.O.K</h3></div>
     </div>
-
   </div>
 </section>
 
 <section class="countdown">
   <h2 class="section-title">Compte à rebours</h2>
-
   <p class="section-lead" style="margin:auto">
     La nuit approche. Les accès sont limités.
   </p>
 
   <div class="timer">
-    <div class="time-box">
-      <strong id="days">00</strong>
-      <span>Jours</span>
-    </div>
-
-    <div class="time-box">
-      <strong id="hours">00</strong>
-      <span>Heures</span>
-    </div>
-
-    <div class="time-box">
-      <strong id="minutes">00</strong>
-      <span>Minutes</span>
-    </div>
-
-    <div class="time-box">
-      <strong id="seconds">00</strong>
-      <span>Secondes</span>
-    </div>
+    <div class="time-box"><strong id="days">00</strong><span>Jours</span></div>
+    <div class="time-box"><strong id="hours">00</strong><span>Heures</span></div>
+    <div class="time-box"><strong id="minutes">00</strong><span>Minutes</span></div>
+    <div class="time-box"><strong id="seconds">00</strong><span>Secondes</span></div>
   </div>
 </section>
 
 <section id="tickets">
   <h2 class="section-title">Accès</h2>
-
   <p class="section-lead">
     Les tickets seront disponibles ce soir. Demandez votre accès, l’équipe confirme ensuite votre invitation.
   </p>
@@ -670,30 +635,24 @@
     <div class="card">
       <h3>Pass Standard</h3>
       <div class="price">300 DHS</div>
-
       <p>Accès général à l’événement.</p>
-
       <ul>
         <li>Entrée à la soirée</li>
         <li>Accès dancefloor</li>
         <li>Localisation envoyée après validation</li>
       </ul>
-
       <a class="btn btn-secondary" href="#request">Demander accès Standard</a>
     </div>
 
     <div class="card vip">
       <h3>Pass VIP</h3>
       <div class="price">600 DHS</div>
-
       <p>Expérience premium et accès prioritaire.</p>
-
       <ul>
         <li>Accès prioritaire</li>
         <li>Espace lounge réservé</li>
         <li>Service premium</li>
       </ul>
-
       <a class="btn btn-primary" href="#request">Demander accès VIP</a>
     </div>
   </div>
@@ -701,31 +660,22 @@
 
 <section id="request">
   <h2 class="section-title">Demande d’accès</h2>
-
   <p class="section-lead">
     Remplissez la demande. Si elle est validée, vous recevrez votre invitation privée avec QR code.
   </p>
 
   <div class="info-grid">
     <div class="card">
-      <p><b>📍 Lieu:</b> communiqué en privé</p>
-      <br>
-      <p><b>🕓 Horaires:</b> doors open at 4AM</p>
-      <br>
-      <p><b>🎭 Dress code:</b> chic, dark, elegant</p>
-      <br>
-
-      <a id="waBtn" class="btn btn-secondary" href="#" target="_blank">
-        Contacter sur WhatsApp
-      </a>
+      <p><b>📍 Lieu:</b> communiqué en privé</p><br>
+      <p><b>🕓 Horaires:</b> doors open at 4AM</p><br>
+      <p><b>🎭 Dress code:</b> chic, dark, elegant</p><br>
+      <a id="waBtn" class="btn btn-secondary" href="#" target="_blank">Contacter sur WhatsApp</a>
     </div>
 
     <div class="card">
       <form id="accessForm">
         <input name="fullName" placeholder="Nom complet" required>
-
         <input name="phone" placeholder="Téléphone / WhatsApp" required>
-
         <input name="instagram" placeholder="Instagram @">
 
         <select name="passType" required>
@@ -733,20 +683,10 @@
           <option value="VIP">Pass VIP — 600 DHS</option>
         </select>
 
-        <input
-          name="guests"
-          type="number"
-          min="1"
-          max="10"
-          value="1"
-          placeholder="Nombre de personnes"
-        >
-
+        <input name="guests" type="number" min="1" max="10" value="1" placeholder="Nombre de personnes">
         <textarea name="message" placeholder="Message / demandes spéciales"></textarea>
 
-        <button id="submitBtn" class="btn btn-primary" type="submit">
-          Envoyer
-        </button>
+        <button id="submitBtn" class="btn btn-primary" type="submit">Envoyer</button>
       </form>
 
       <p id="formMsg" class="notice"></p>
@@ -764,6 +704,45 @@
 </footer>
 
 <script>
+  const music = document.getElementById("bgMusic");
+  const musicBtn = document.getElementById("musicBtn");
+  const overlay = document.getElementById("enterOverlay");
+  const enterBtn = document.getElementById("enterBtn");
+
+  let isPlaying = false;
+
+  async function startMusic() {
+    try {
+      music.volume = 0.75;
+      music.muted = false;
+      await music.play();
+      isPlaying = true;
+      musicBtn.textContent = "⏸ Music";
+      overlay.classList.add("hidden");
+    } catch (error) {
+      overlay.classList.remove("hidden");
+    }
+  }
+
+  window.addEventListener("load", startMusic);
+  enterBtn.addEventListener("click", startMusic);
+
+  musicBtn.addEventListener("click", async () => {
+    try {
+      if (!isPlaying) {
+        await music.play();
+        isPlaying = true;
+        musicBtn.textContent = "⏸ Music";
+      } else {
+        music.pause();
+        isPlaying = false;
+        musicBtn.textContent = "▶ Music";
+      }
+    } catch (error) {
+      overlay.classList.remove("hidden");
+    }
+  });
+
   const eventDate = new Date('2026-05-03T04:00:00').getTime();
 
   function updateCountdown() {
@@ -792,7 +771,6 @@
     .then(r => r.json())
     .then(c => {
       whatsapp = c.whatsappNumber || whatsapp;
-
       const waText = 'Hello, je veux demander un accès pour LAYLA NIGHTS.';
       document.getElementById('waBtn').href =
         `https://wa.me/${whatsapp}?text=${encodeURIComponent(waText)}`;
@@ -820,9 +798,7 @@
     try {
       const res = await fetch('/api/access-request', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
 
