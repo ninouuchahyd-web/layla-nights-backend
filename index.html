@@ -361,6 +361,10 @@
       transition:.4s ease;
     }
 
+    .dj-card img.marta-photo {
+      object-position: 72% center;
+    }
+
     .dj-card:hover img {
       transform:scale(1.1);
       filter:grayscale(35%) contrast(1.15) brightness(.82);
@@ -507,6 +511,10 @@
     @media(max-width:520px) {
       .lineup-grid { grid-template-columns:1fr; }
       .dj-card { min-height:500px; }
+
+      .dj-card img.marta-photo {
+        object-position: 70% center;
+      }
     }
   </style>
 </head>
@@ -613,7 +621,7 @@
     </div>
 
     <div class="dj-card">
-      <img src="MARTA.jpeg" alt="Marta">
+      <img class="marta-photo" src="MARTA.jpeg" alt="Marta">
       <div class="dj-info"><h3>Marta</h3></div>
     </div>
   </div>
