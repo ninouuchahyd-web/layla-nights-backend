@@ -60,7 +60,9 @@
       text-align: center;
     }
 
-    .enter-overlay.hidden { display:none; }
+    .enter-overlay.hidden {
+      display:none;
+    }
 
     .enter-box {
       max-width: 520px;
@@ -510,7 +512,7 @@
 
 <body>
 
-<audio id="bgMusic" loop autoplay playsinline>
+<audio id="bgMusic" loop playsinline>
   <source src="music.mp3" type="audio/mpeg">
 </audio>
 
@@ -714,26 +716,32 @@
 
   let isPlaying = false;
 
-  async function startMusic() {
+  async function startMusicAndEnter() {
+    overlay.classList.add("hidden");
+
     try {
       music.volume = 0.75;
       music.muted = false;
       await music.play();
+
       isPlaying = true;
       musicBtn.textContent = "⏸ Music";
-      overlay.classList.add("hidden");
     } catch (error) {
-      overlay.classList.remove("hidden");
+      console.log("Music could not start:", error);
+      isPlaying = false;
+      musicBtn.textContent = "▶ Music";
     }
   }
 
-  window.addEventListener("load", startMusic);
-  enterBtn.addEventListener("click", startMusic);
+  enterBtn.addEventListener("click", startMusicAndEnter);
 
   musicBtn.addEventListener("click", async () => {
     try {
       if (!isPlaying) {
+        music.volume = 0.75;
+        music.muted = false;
         await music.play();
+
         isPlaying = true;
         musicBtn.textContent = "⏸ Music";
       } else {
@@ -742,7 +750,8 @@
         musicBtn.textContent = "▶ Music";
       }
     } catch (error) {
-      overlay.classList.remove("hidden");
+      console.log("Music button error:", error);
+      alert("Music file not found or blocked. Check music.mp3.");
     }
   });
 
