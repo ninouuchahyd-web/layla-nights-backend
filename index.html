@@ -684,6 +684,9 @@
         </select>
 
         <input name="guests" type="number" min="1" max="10" value="1" placeholder="Nombre de personnes">
+
+        <input name="promoCode" placeholder="Promo code (optional)">
+
         <textarea name="message" placeholder="Message / demandes spéciales"></textarea>
 
         <button id="submitBtn" class="btn btn-primary" type="submit">Envoyer</button>
@@ -789,6 +792,10 @@
     const submitBtn = document.getElementById('submitBtn');
 
     const data = Object.fromEntries(new FormData(form).entries());
+
+    if (data.promoCode) {
+      data.promoCode = String(data.promoCode).trim().toUpperCase();
+    }
 
     formMsg.className = 'notice';
     formMsg.textContent = 'Envoi de la demande...';
