@@ -40,6 +40,8 @@ function toGuest(row) {
     passType: row.pass_type,
     guests: row.guests || 1,
     message: row.message || '',
+    promoCode: row.promo_code || '',
+    promoDj: row.promo_dj || '',
     status: row.status || 'pending',
     qrUrl:
       row.status === 'approved'
@@ -129,14 +131,57 @@ app.get('/api/test-supabase', async (_req, res) => {
   }
 });
 
+/* ACCESS REQUEST + PROMO CODE */
 app.post('/api/access-request', async (req, res) => {
   try {
-    const { fullName, phone, instagram, passType, guests, message } = req.body || {};
+    const {
+      fullName,
+      phone,
+      instagram,
+      passType,
+      guests,
+      message,
+      promoCode
+    } = req.body || {};
 
     if (!fullName || !phone || !passType) {
       return res.status(400).json({
         error: 'fullName, phone and passType are required.'
       });
+    }
+
+    let finalPromoCode = '';
+    let promoDj = '';
+
+    if (promoCode && String(promoCode).trim() !== '') {
+      finalPromoCode = String(promoCode).trim().toUpperCase();
+
+      const promoRows = await supabaseRequest(
+        `promo_codes?code=eq.${encodeURIComponent(finalPromoCode)}&select=*`,
+        { method: 'GET' }
+      );
+
+      if (!promoRows || !promoRows.length) {
+        return res.status(400).json({
+          error: 'Invalid promo code.'
+        });
+      }
+
+      const promo = promoRows[0];
+
+      if (!promo.active) {
+        return res.status(400).json({
+          error: 'This promo code is not active.'
+        });
+      }
+
+      if (Number(promo.used_count || 0) >= Number(promo.max_uses || 10)) {
+        return res.status(400).json({
+          error: 'This promo code has reached its limit.'
+        });
+      }
+
+      promoDj = promo.dj_name;
     }
 
     const reference = makeReference('LAYLA');
@@ -151,10 +196,34 @@ app.post('/api/access-request', async (req, res) => {
         pass_type: String(passType).trim(),
         guests: Math.max(1, Math.min(10, Number(guests || 1))),
         message: message ? String(message).trim() : '',
+        promo_code: finalPromoCode,
+        promo_dj: promoDj,
         status: 'pending',
         ticket_status: 'unused'
       })
     });
+
+    if (finalPromoCode) {
+      const promoRowsAfterInsert = await supabaseRequest(
+        `promo_codes?code=eq.${encodeURIComponent(finalPromoCode)}&select=*`,
+        { method: 'GET' }
+      );
+
+      if (promoRowsAfterInsert && promoRowsAfterInsert.length) {
+        const promo = promoRowsAfterInsert[0];
+        const nextUsedCount = Number(promo.used_count || 0) + 1;
+
+        await supabaseRequest(
+          `promo_codes?code=eq.${encodeURIComponent(finalPromoCode)}`,
+          {
+            method: 'PATCH',
+            body: JSON.stringify({
+              used_count: nextUsedCount
+            })
+          }
+        );
+      }
+    }
 
     res.json({
       success: true,
