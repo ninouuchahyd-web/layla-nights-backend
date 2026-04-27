@@ -398,7 +398,68 @@ app.post('/api/scan', async (req, res) => {
     });
   }
 });
+app.get('/api/current-phase', async (req, res) => {
+  try {
+    const { count, error } = await supabase
+      .from('tickets')
+      .select('*', { count: 'exact', head: true });
 
+    if (error) {
+      return res.status(500).json({ error: 'Could not count tickets' });
+    }
+
+    const sold = count || 0;
+
+    if (sold < 20) {
+      return res.json({
+        phaseNumber: 1,
+        phase: 'Phase 1 — Early Access',
+        price: 150,
+        limit: 20,
+        sold,
+        remaining: 20 - sold,
+        soldOut: false
+      });
+    }
+
+    if (sold < 40) {
+      return res.json({
+        phaseNumber: 2,
+        phase: 'Phase 2 — Regular Access',
+        price: 200,
+        limit: 20,
+        sold,
+        remaining: 40 - sold,
+        soldOut: false
+      });
+    }
+
+    if (sold < 70) {
+      return res.json({
+        phaseNumber: 3,
+        phase: 'Phase 3 — Last Call',
+        price: 250,
+        limit: 30,
+        sold,
+        remaining: 70 - sold,
+        soldOut: false
+      });
+    }
+
+    return res.json({
+      phaseNumber: 0,
+      phase: 'Sold Out',
+      price: 0,
+      limit: 0,
+      sold,
+      remaining: 0,
+      soldOut: true
+    });
+
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
 app.listen(port, () => {
   console.log(`Layla Nights running on port ${port}`);
   console.log(`Public URL: ${appUrl}`);
