@@ -30,6 +30,75 @@ function isAdmin(req) {
   return req.headers['x-admin-password'] === adminPassword;
 }
 
+function calculateTicketPhase(sold) {
+  if (sold < 20) {
+    return {
+      phaseNumber: 1,
+      phase: 'Phase 1 — Early Access',
+      price: 150,
+      limit: 20,
+      sold,
+      remaining: 20 - sold,
+      soldOut: false
+    };
+  }
+
+  if (sold < 40) {
+    return {
+      phaseNumber: 2,
+      phase: 'Phase 2 — Regular Access',
+      price: 200,
+      limit: 20,
+      sold,
+      remaining: 40 - sold,
+      soldOut: false
+    };
+  }
+
+  if (sold < 70) {
+    return {
+      phaseNumber: 3,
+      phase: 'Phase 3 — Last Call',
+      price: 250,
+      limit: 30,
+      sold,
+      remaining: 70 - sold,
+      soldOut: false
+    };
+  }
+
+  return {
+    phaseNumber: 0,
+    phase: 'Sold Out',
+    price: 0,
+    limit: 0,
+    sold,
+    remaining: 0,
+    soldOut: true
+  };
+}
+
+async function countTickets() {
+  const response = await supabaseRawRequest('tickets?select=id', {
+    method: 'GET',
+    headers: {
+      Prefer: 'count=exact',
+      Range: '0-0'
+    },
+    returnHeaders: true
+  });
+
+  const contentRange = response.headers.get('content-range');
+
+  if (!contentRange) {
+    return 0;
+  }
+
+  const total = contentRange.split('/')[1];
+
+  return Number(total || 0);
+}
+
 function toGuest(row) {
   return {
     id: row.id,
@@ -38,6 +107,8 @@ function toGuest(row) {
     phone: row.phone,
     instagram: row.instagram || '',
     passType: row.pass_type,
+    ticketPhase: row.ticket_phase || '',
+    ticketPrice: row.ticket_price || 0,
     guests: row.guests || 1,
     message: row.message || '',
     promoCode: row.promo_code || '',
@@ -54,7 +125,7 @@ function toGuest(row) {
   };
 }
 
-async function supabaseRequest(endpoint, options = {}) {
+async function supabaseRawRequest(endpoint, options = {}) {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     throw new Error('Missing SUPABASE_URL or SUPABASE_KEY in Render Environment.');
   }
@@ -62,7 +133,8 @@ async function supabaseRequest(endpoint, options = {}) {
   const url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
 
   const response = await fetch(url, {
-    ...options,
+    method: options.method || 'GET',
+    body: options.body,
     headers: {
       apikey: SUPABASE_KEY,
       Authorization: `Bearer ${SUPABASE_KEY}`,
@@ -71,6 +143,16 @@ async function supabaseRequest(endpoint, options = {}) {
       ...(options.headers || {})
     }
   });
+
+  if (options.returnHeaders) {
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('SUPABASE ERROR:', text);
+      throw new Error(text || 'Supabase request failed');
+    }
+
+    return response;
+  }
 
   const text = await response.text();
 
@@ -92,11 +174,30 @@ async function supabaseRequest(endpoint, options = {}) {
   return data;
 }
 
+async function supabaseRequest(endpoint, options = {}) {
+  return supabaseRawRequest(endpoint, options);
+}
+
 app.get('/api/config', (_req, res) => {
   res.json({
     whatsappNumber,
     appUrl
   });
+});
+
+/* CURRENT AUTOMATIC TICKET PHASE */
+app.get('/api/current-phase', async (_req, res) => {
+  try {
+    const sold = await countTickets();
+    const phase = calculateTicketPhase(sold);
+
+    return res.json(phase);
+  } catch (error) {
+    console.error('CURRENT PHASE ERROR:', error.message);
+    return res.status(500).json({
+      error: error.message || 'Could not load current phase.'
+    });
+  }
 });
 
 /* DEBUG SUPABASE */
@@ -131,22 +232,30 @@ app.get('/api/test-supabase', async (_req, res) => {
   }
 });
 
-/* ACCESS REQUEST + PROMO CODE */
+/* ACCESS REQUEST + PROMO CODE + AUTOMATIC PHASE */
 app.post('/api/access-request', async (req, res) => {
   try {
     const {
       fullName,
       phone,
       instagram,
-      passType,
       guests,
       message,
       promoCode
     } = req.body || {};
 
-    if (!fullName || !phone || !passType) {
+    if (!fullName || !phone) {
       return res.status(400).json({
-        error: 'fullName, phone and passType are required.'
+        error: 'fullName and phone are required.'
+      });
+    }
+
+    const sold = await countTickets();
+    const currentPhase = calculateTicketPhase(sold);
+
+    if (currentPhase.soldOut) {
+      return res.status(400).json({
+        error: 'Sold out. All tickets have been sold.'
       });
     }
 
@@ -193,7 +302,9 @@ app.post('/api/access-request', async (req, res) => {
         full_name: String(fullName).trim(),
         phone: String(phone).trim(),
         instagram: instagram ? String(instagram).trim() : '',
-        pass_type: String(passType).trim(),
+        pass_type: `${currentPhase.phase} — ${currentPhase.price} DHS`,
+        ticket_phase: currentPhase.phase,
+        ticket_price: currentPhase.price,
         guests: Math.max(1, Math.min(10, Number(guests || 1))),
         message: message ? String(message).trim() : '',
         promo_code: finalPromoCode,
@@ -398,68 +509,7 @@ app.post('/api/scan', async (req, res) => {
     });
   }
 });
-app.get('/api/current-phase', async (req, res) => {
-  try {
-    const { count, error } = await supabase
-      .from('tickets')
-      .select('*', { count: 'exact', head: true });
 
-    if (error) {
-      return res.status(500).json({ error: 'Could not count tickets' });
-    }
-
-    const sold = count || 0;
-
-    if (sold < 20) {
-      return res.json({
-        phaseNumber: 1,
-        phase: 'Phase 1 — Early Access',
-        price: 150,
-        limit: 20,
-        sold,
-        remaining: 20 - sold,
-        soldOut: false
-      });
-    }
-
-    if (sold < 40) {
-      return res.json({
-        phaseNumber: 2,
-        phase: 'Phase 2 — Regular Access',
-        price: 200,
-        limit: 20,
-        sold,
-        remaining: 40 - sold,
-        soldOut: false
-      });
-    }
-
-    if (sold < 70) {
-      return res.json({
-        phaseNumber: 3,
-        phase: 'Phase 3 — Last Call',
-        price: 250,
-        limit: 30,
-        sold,
-        remaining: 70 - sold,
-        soldOut: false
-      });
-    }
-
-    return res.json({
-      phaseNumber: 0,
-      phase: 'Sold Out',
-      price: 0,
-      limit: 0,
-      sold,
-      remaining: 0,
-      soldOut: true
-    });
-
-  } catch (err) {
-    return res.status(500).json({ error: 'Server error' });
-  }
-});
 app.listen(port, () => {
   console.log(`Layla Nights running on port ${port}`);
   console.log(`Public URL: ${appUrl}`);
