@@ -272,7 +272,7 @@
     }
 
     .features { grid-template-columns:repeat(3,1fr); }
-    .ticket-grid { grid-template-columns:repeat(3,1fr); }
+    .ticket-grid { grid-template-columns:repeat(4,1fr); }
     .info-grid { grid-template-columns:.9fr 1.1fr; }
 
     .card {
@@ -316,6 +316,10 @@
     .active-phase {
       border-color:rgba(255,191,107,.75);
       box-shadow:0 30px 100px rgba(255,191,107,.16);
+    }
+
+    .vip {
+      border-color:rgba(255,191,107,.6);
     }
 
     .phase-badge {
@@ -521,6 +525,7 @@
 
     @media(max-width:1200px) {
       .lineup-grid { grid-template-columns:repeat(3,1fr); }
+      .ticket-grid { grid-template-columns:repeat(2,1fr); }
     }
 
     @media(max-width:820px) {
@@ -549,15 +554,17 @@
 
 <body>
 
-<audio id="bgMusic" loop playsinline>
-  <source src="music.mp3" type="audio/mpeg">
+<audio id="bgMusic" loop preload="auto" playsinline>
+  <source src="./music.mp3" type="audio/mpeg">
 </audio>
 
 <div id="enterOverlay" class="enter-overlay">
   <div class="enter-box">
     <h2>LAYLA NIGHTS</h2>
     <p>Enter the afterparty experience with sound.</p>
-    <button id="enterBtn" class="btn btn-primary" type="button">Enter Experience</button>
+    <button id="enterBtn" class="btn btn-primary" type="button">Enter With Music</button>
+    <button id="enterNoMusicBtn" class="btn btn-secondary" type="button" style="margin-top:12px;">Enter Without Music</button>
+    <p id="musicError" class="notice error"></p>
   </div>
 </div>
 
@@ -672,7 +679,7 @@
 <section id="tickets">
   <h2 class="section-title">Accès</h2>
   <p class="section-lead">
-    Les tickets sont vendus automatiquement en 3 phases. Quand une phase est sold out, la suivante s’active.
+    Les tickets standards sont vendus automatiquement en 3 phases. Le VIP reste disponible à 600 DHS.
   </p>
 
   <div class="ticket-grid">
@@ -691,7 +698,7 @@
     <div class="card" id="phase2Card">
       <div id="phase2Badge"></div>
       <h3>Phase 2 — Regular Access</h3>
-      <div class="price">200 DHS</div>
+      <div class="price">250 DHS</div>
       <p>20 tickets disponibles après la phase Early Access.</p>
       <ul>
         <li>20 tickets disponibles</li>
@@ -703,12 +710,24 @@
     <div class="card" id="phase3Card">
       <div id="phase3Badge"></div>
       <h3>Phase 3 — Last Call</h3>
-      <div class="price">250 DHS</div>
+      <div class="price">300 DHS</div>
       <p>30 derniers tickets avant fermeture des ventes.</p>
       <ul>
         <li>30 tickets disponibles</li>
         <li>Dernière chance d’accès</li>
         <li>Places limitées</li>
+      </ul>
+    </div>
+
+    <div class="card vip" id="vipCard">
+      <div class="phase-badge">VIP</div>
+      <h3>VIP Access</h3>
+      <div class="price">600 DHS</div>
+      <p>Expérience premium et accès prioritaire.</p>
+      <ul>
+        <li>Accès prioritaire</li>
+        <li>Espace premium</li>
+        <li>Service VIP</li>
       </ul>
     </div>
   </div>
@@ -722,7 +741,7 @@
     Remplissez la demande. Le prix appliqué est automatiquement celui de la phase active.
   </p>
 
-  <div class="info-grid">
+  <div class="info-grid"> 
     <div class="card">
       <p><b>📍 Lieu:</b> communiqué en privé</p><br>
       <p><b>🕓 Horaires:</b> doors open at 4AM</p><br>
@@ -738,6 +757,11 @@
           <div class="price" id="currentPhasePrice">Loading...</div>
           <p id="currentPhaseInfo">Checking available tickets...</p>
         </div>
+
+        <select name="ticketType" id="ticketType" required>
+          <option value="STANDARD">Ticket Standard — Phase automatique</option>
+          <option value="VIP">VIP — 600 DHS</option>
+        </select>
 
         <input type="hidden" name="passType" id="passTypeInput">
         <input type="hidden" name="ticketPrice" id="ticketPriceInput">
@@ -775,46 +799,63 @@
   const musicBtn = document.getElementById("musicBtn");
   const overlay = document.getElementById("enterOverlay");
   const enterBtn = document.getElementById("enterBtn");
+  const enterNoMusicBtn = document.getElementById("enterNoMusicBtn");
+  const musicError = document.getElementById("musicError");
 
   let isPlaying = false;
 
-  async function startMusicAndEnter() {
-    overlay.classList.add("hidden");
-
+  async function playMusic() {
     try {
-      music.volume = 0.75;
+      musicError.textContent = "";
+      music.volume = 0.8;
       music.muted = false;
+
       await music.play();
 
       isPlaying = true;
       musicBtn.textContent = "⏸ Music";
+      return true;
+
     } catch (error) {
-      console.log("Music could not start:", error);
+      console.error("Music error:", error);
+
       isPlaying = false;
       musicBtn.textContent = "▶ Music";
+
+      musicError.textContent =
+        "Music could not play. Make sure music.mp3 is uploaded in the same folder as index.html.";
+
+      return false;
     }
   }
 
-  enterBtn.addEventListener("click", startMusicAndEnter);
+  enterBtn.addEventListener("click", async () => {
+    overlay.classList.add("hidden");
+    await playMusic();
+  });
+
+  enterNoMusicBtn.addEventListener("click", () => {
+    overlay.classList.add("hidden");
+  });
 
   musicBtn.addEventListener("click", async () => {
-    try {
-      if (!isPlaying) {
-        music.volume = 0.75;
-        music.muted = false;
-        await music.play();
-
-        isPlaying = true;
-        musicBtn.textContent = "⏸ Music";
-      } else {
-        music.pause();
-        isPlaying = false;
-        musicBtn.textContent = "▶ Music";
-      }
-    } catch (error) {
-      console.log("Music button error:", error);
-      alert("Music file not found or blocked. Check music.mp3.");
+    if (!isPlaying) {
+      await playMusic();
+    } else {
+      music.pause();
+      isPlaying = false;
+      musicBtn.textContent = "▶ Music";
     }
+  });
+
+  music.addEventListener("ended", () => {
+    isPlaying = false;
+    musicBtn.textContent = "▶ Music";
+  });
+
+  music.addEventListener("error", () => {
+    console.error("Audio file failed to load:", music.error);
+    musicBtn.textContent = "Music file missing";
   });
 
   const eventDate = new Date('2026-05-03T04:00:00').getTime();
@@ -867,6 +908,26 @@
 
   async function loadCurrentPhase() {
     const submitBtn = document.getElementById('submitBtn');
+    const ticketType = document.getElementById('ticketType')?.value || 'STANDARD';
+
+    if (ticketType === 'VIP') {
+      resetPhaseCards();
+
+      document.getElementById('currentPhaseTitle').textContent = 'VIP Access';
+      document.getElementById('currentPhasePrice').textContent = '600 DHS';
+      document.getElementById('currentPhaseInfo').textContent = 'Accès VIP premium.';
+
+      document.getElementById('passTypeInput').value = 'VIP — 600 DHS';
+      document.getElementById('ticketPriceInput').value = 600;
+      document.getElementById('ticketPhaseInput').value = 'VIP';
+
+      document.getElementById('phaseGlobalInfo').textContent =
+        'VIP Access sélectionné — 600 DHS.';
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Envoyer';
+      return;
+    }
 
     try {
       const res = await fetch('/api/current-phase');
@@ -877,9 +938,11 @@
       if (data.soldOut) {
         document.getElementById('currentPhaseTitle').textContent = 'Sold Out';
         document.getElementById('currentPhasePrice').textContent = '0 DHS';
-        document.getElementById('currentPhaseInfo').textContent = 'Tous les tickets sont sold out.';
+        document.getElementById('currentPhaseInfo').textContent = 'Tous les tickets standards sont sold out.';
 
-        document.getElementById('phaseGlobalInfo').textContent = 'Sold out — tous les tickets ont été vendus.';
+        document.getElementById('phaseGlobalInfo').textContent =
+          'Sold out — tous les tickets standards ont été vendus.';
+
         submitBtn.disabled = true;
         submitBtn.textContent = 'Sold Out';
         return;
@@ -896,6 +959,9 @@
 
       document.getElementById('phaseGlobalInfo').textContent =
         data.phase + ' active — ' + data.remaining + ' tickets restants.';
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Envoyer';
 
       if (data.phaseNumber === 1) {
         document.getElementById('phase1Card').classList.add('active-phase');
@@ -921,6 +987,8 @@
         'Impossible de charger la phase actuelle.';
     }
   }
+
+  document.getElementById('ticketType').addEventListener('change', loadCurrentPhase);
 
   loadCurrentPhase();
 
@@ -959,7 +1027,7 @@
 
       formMsg.className = 'notice success';
       formMsg.innerHTML =
-        `Demande envoyée ✅ Référence : <b>${json.guest.reference}</b><br>Phase : <b>${json.guest.ticket_phase || data.ticketPhase}</b><br>Prix : <b>${json.guest.ticket_price || data.ticketPrice} DHS</b><br>L’équipe vous contactera après validation.`;
+        `Demande envoyée ✅ Référence : <b>${json.guest.reference}</b><br>Phase : <b>${json.guest.ticketPhase || data.ticketPhase}</b><br>Prix : <b>${json.guest.ticketPrice || data.ticketPrice} DHS</b><br>L’équipe vous contactera après validation.`;
 
       form.reset();
       await loadCurrentPhase();
