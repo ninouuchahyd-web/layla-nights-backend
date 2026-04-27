@@ -31,25 +31,26 @@ function isAdmin(req) {
 }
 
 /*
-  UPDATED TICKET PHASES:
+  TICKET PHASES:
 
-  Phase 1: 35 tickets at 150 DHS
-  Phase 2: 20 tickets at 200 DHS
-  Phase 3: 30 tickets at 250 DHS
+  Phase 1: 20 tickets at 150 DHS
+  Phase 2: 20 tickets at 250 DHS
+  Phase 3: 30 tickets at 300 DHS
 
-  Total: 85 tickets
+  Standard total: 70 tickets
+  VIP: 600 DHS
 */
 function calculateTicketPhase(sold) {
-  const phase1Limit = 35;
-  const phase2Limit = 55; // 35 + 20
-  const phase3Limit = 85; // 35 + 20 + 30
+  const phase1Limit = 20;
+  const phase2Limit = 40; // 20 + 20
+  const phase3Limit = 70; // 20 + 20 + 30
 
   if (sold < phase1Limit) {
     return {
       phaseNumber: 1,
       phase: 'Phase 1 — Early Access',
       price: 150,
-      limit: 35,
+      limit: 20,
       sold,
       remaining: phase1Limit - sold,
       soldOut: false
@@ -60,7 +61,7 @@ function calculateTicketPhase(sold) {
     return {
       phaseNumber: 2,
       phase: 'Phase 2 — Regular Access',
-      price: 200,
+      price: 250,
       limit: 20,
       sold,
       remaining: phase2Limit - sold,
@@ -72,7 +73,7 @@ function calculateTicketPhase(sold) {
     return {
       phaseNumber: 3,
       phase: 'Phase 3 — Last Call',
-      price: 250,
+      price: 300,
       limit: 30,
       sold,
       remaining: phase3Limit - sold,
@@ -91,15 +92,22 @@ function calculateTicketPhase(sold) {
   };
 }
 
-async function countTickets() {
-  const response = await supabaseRawRequest('tickets?select=id', {
-    method: 'GET',
-    headers: {
-      Prefer: 'count=exact',
-      Range: '0-0'
-    },
-    returnHeaders: true
-  });
+/*
+  Count only STANDARD tickets for phases.
+  VIP tickets should not consume Phase 1 / Phase 2 / Phase 3 stock.
+*/
+async function countStandardTickets() {
+  const response = await supabaseRawRequest(
+    'tickets?select=id&ticket_phase=neq.VIP',
+    {
+      method: 'GET',
+      headers: {
+        Prefer: 'count=exact',
+        Range: '0-0'
+      },
+      returnHeaders: true
+    }
+  );
 
   const contentRange = response.headers.get('content-range');
 
@@ -198,10 +206,10 @@ app.get('/api/config', (_req, res) => {
   });
 });
 
-/* CURRENT AUTOMATIC TICKET PHASE */
+/* CURRENT AUTOMATIC STANDARD TICKET PHASE */
 app.get('/api/current-phase', async (_req, res) => {
   try {
-    const sold = await countTickets();
+    const sold = await countStandardTickets();
     const phase = calculateTicketPhase(sold);
 
     return res.json(phase);
@@ -245,7 +253,7 @@ app.get('/api/test-supabase', async (_req, res) => {
   }
 });
 
-/* ACCESS REQUEST + PROMO CODE + AUTOMATIC PHASE */
+/* ACCESS REQUEST + PROMO CODE + AUTOMATIC PHASE + VIP */
 app.post('/api/access-request', async (req, res) => {
   try {
     const {
@@ -254,7 +262,8 @@ app.post('/api/access-request', async (req, res) => {
       instagram,
       guests,
       message,
-      promoCode
+      promoCode,
+      ticketType
     } = req.body || {};
 
     if (!fullName || !phone) {
@@ -263,13 +272,27 @@ app.post('/api/access-request', async (req, res) => {
       });
     }
 
-    const sold = await countTickets();
-    const currentPhase = calculateTicketPhase(sold);
+    let currentPhase;
 
-    if (currentPhase.soldOut) {
-      return res.status(400).json({
-        error: 'Sold out. All tickets have been sold.'
-      });
+    if (ticketType === 'VIP') {
+      currentPhase = {
+        phaseNumber: 99,
+        phase: 'VIP',
+        price: 600,
+        limit: 0,
+        sold: 0,
+        remaining: 0,
+        soldOut: false
+      };
+    } else {
+      const sold = await countStandardTickets();
+      currentPhase = calculateTicketPhase(sold);
+
+      if (currentPhase.soldOut) {
+        return res.status(400).json({
+          error: 'Sold out. All standard tickets have been sold.'
+        });
+      }
     }
 
     let finalPromoCode = '';
