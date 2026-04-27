@@ -60,9 +60,7 @@
       text-align: center;
     }
 
-    .enter-overlay.hidden {
-      display:none;
-    }
+    .enter-overlay.hidden { display:none; }
 
     .enter-box {
       max-width: 520px;
@@ -274,7 +272,7 @@
     }
 
     .features { grid-template-columns:repeat(3,1fr); }
-    .ticket-grid { grid-template-columns:repeat(2,1fr); }
+    .ticket-grid { grid-template-columns:repeat(3,1fr); }
     .info-grid { grid-template-columns:.9fr 1.1fr; }
 
     .card {
@@ -315,7 +313,29 @@
       margin:18px 0;
     }
 
-    .vip { border-color:rgba(255,191,107,.55); }
+    .active-phase {
+      border-color:rgba(255,191,107,.75);
+      box-shadow:0 30px 100px rgba(255,191,107,.16);
+    }
+
+    .phase-badge {
+      display:inline-flex;
+      padding:8px 14px;
+      border-radius:999px;
+      background:linear-gradient(135deg,var(--gold),var(--amber));
+      color:#111;
+      font-weight:900;
+      font-size:12px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      margin-bottom:14px;
+    }
+
+    .sold-note {
+      color:var(--amber);
+      font-weight:800;
+      margin-top:12px;
+    }
 
     .lineup {
       background:
@@ -345,11 +365,6 @@
       box-shadow:0 25px 80px rgba(0,0,0,.45);
     }
 
-    .dj-card:hover {
-      transform:translateY(-5px);
-      box-shadow:0 30px 100px rgba(255,191,107,.16);
-    }
-
     .dj-card img {
       position:absolute;
       inset:0;
@@ -361,9 +376,7 @@
       transition:.4s ease;
     }
 
-    .dj-card img.marta-photo {
-      object-position: 72% center;
-    }
+    .dj-card img.marta-photo { object-position: 72% center; }
 
     .dj-card:hover img {
       transform:scale(1.1);
@@ -462,6 +475,21 @@
 
     .success { color:#78ff9b; }
     .error { color:#ff7777; }
+
+    .current-ticket-box {
+      border:1px solid rgba(255,191,107,.55);
+      background:rgba(255,191,107,.06);
+      border-radius:22px;
+      padding:20px;
+      margin-bottom:8px;
+    }
+
+    .current-ticket-box h3 {
+      color:var(--gold);
+      margin-bottom:8px;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+    }
 
     .sticky-mobile {
       display:none;
@@ -644,40 +672,54 @@
 <section id="tickets">
   <h2 class="section-title">Accès</h2>
   <p class="section-lead">
-    Les tickets seront disponibles ce soir. Demandez votre accès, l’équipe confirme ensuite votre invitation.
+    Les tickets sont vendus automatiquement en 3 phases. Quand une phase est sold out, la suivante s’active.
   </p>
 
   <div class="ticket-grid">
-    <div class="card">
-      <h3>Pass Standard</h3>
-      <div class="price">300 DHS</div>
-      <p>Accès général à l’événement.</p>
+    <div class="card" id="phase1Card">
+      <div id="phase1Badge"></div>
+      <h3>Phase 1 — Early Access</h3>
+      <div class="price">150 DHS</div>
+      <p>20 tickets seulement. Premiers arrivés, premiers servis.</p>
       <ul>
-        <li>Entrée à la soirée</li>
-        <li>Accès dancefloor</li>
-        <li>Localisation envoyée après validation</li>
+        <li>20 tickets disponibles</li>
+        <li>Prix early bird</li>
+        <li>Accès général à l’événement</li>
       </ul>
-      <a class="btn btn-secondary" href="#request">Demander accès Standard</a>
     </div>
 
-    <div class="card vip">
-      <h3>Pass VIP</h3>
-      <div class="price">600 DHS</div>
-      <p>Expérience premium et accès prioritaire.</p>
+    <div class="card" id="phase2Card">
+      <div id="phase2Badge"></div>
+      <h3>Phase 2 — Regular Access</h3>
+      <div class="price">200 DHS</div>
+      <p>20 tickets disponibles après la phase Early Access.</p>
       <ul>
-        <li>Accès prioritaire</li>
-        <li>Espace lounge réservé</li>
-        <li>Service premium</li>
+        <li>20 tickets disponibles</li>
+        <li>Prix standard</li>
+        <li>Accès général à l’événement</li>
       </ul>
-      <a class="btn btn-primary" href="#request">Demander accès VIP</a>
+    </div>
+
+    <div class="card" id="phase3Card">
+      <div id="phase3Badge"></div>
+      <h3>Phase 3 — Last Call</h3>
+      <div class="price">250 DHS</div>
+      <p>30 derniers tickets avant fermeture des ventes.</p>
+      <ul>
+        <li>30 tickets disponibles</li>
+        <li>Dernière chance d’accès</li>
+        <li>Places limitées</li>
+      </ul>
     </div>
   </div>
+
+  <p id="phaseGlobalInfo" class="sold-note">Chargement de la phase actuelle...</p>
 </section>
 
 <section id="request">
   <h2 class="section-title">Demande d’accès</h2>
   <p class="section-lead">
-    Remplissez la demande. Si elle est validée, vous recevrez votre invitation privée avec QR code.
+    Remplissez la demande. Le prix appliqué est automatiquement celui de la phase active.
   </p>
 
   <div class="info-grid">
@@ -690,14 +732,20 @@
 
     <div class="card">
       <form id="accessForm">
+
+        <div class="current-ticket-box">
+          <h3 id="currentPhaseTitle">Phase actuelle</h3>
+          <div class="price" id="currentPhasePrice">Loading...</div>
+          <p id="currentPhaseInfo">Checking available tickets...</p>
+        </div>
+
+        <input type="hidden" name="passType" id="passTypeInput">
+        <input type="hidden" name="ticketPrice" id="ticketPriceInput">
+        <input type="hidden" name="ticketPhase" id="ticketPhaseInput">
+
         <input name="fullName" placeholder="Nom complet" required>
         <input name="phone" placeholder="Téléphone / WhatsApp" required>
         <input name="instagram" placeholder="Instagram @">
-
-        <select name="passType" required>
-          <option value="Standard">Pass Standard — 150 DHS</option>
-          <option value="VIP">Pass VIP — 400 DHS</option>
-        </select>
 
         <input name="guests" type="number" min="1" max="10" value="1" placeholder="Nombre de personnes">
 
@@ -807,6 +855,75 @@
         `https://wa.me/${whatsapp}?text=${encodeURIComponent(waText)}`;
     });
 
+  function resetPhaseCards() {
+    document.getElementById('phase1Card').classList.remove('active-phase');
+    document.getElementById('phase2Card').classList.remove('active-phase');
+    document.getElementById('phase3Card').classList.remove('active-phase');
+
+    document.getElementById('phase1Badge').innerHTML = '';
+    document.getElementById('phase2Badge').innerHTML = '';
+    document.getElementById('phase3Badge').innerHTML = '';
+  }
+
+  async function loadCurrentPhase() {
+    const submitBtn = document.getElementById('submitBtn');
+
+    try {
+      const res = await fetch('/api/current-phase');
+      const data = await res.json();
+
+      resetPhaseCards();
+
+      if (data.soldOut) {
+        document.getElementById('currentPhaseTitle').textContent = 'Sold Out';
+        document.getElementById('currentPhasePrice').textContent = '0 DHS';
+        document.getElementById('currentPhaseInfo').textContent = 'Tous les tickets sont sold out.';
+
+        document.getElementById('phaseGlobalInfo').textContent = 'Sold out — tous les tickets ont été vendus.';
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sold Out';
+        return;
+      }
+
+      document.getElementById('currentPhaseTitle').textContent = data.phase;
+      document.getElementById('currentPhasePrice').textContent = data.price + ' DHS';
+      document.getElementById('currentPhaseInfo').textContent =
+        data.remaining + ' tickets restants dans cette phase.';
+
+      document.getElementById('passTypeInput').value = data.phase + ' — ' + data.price + ' DHS';
+      document.getElementById('ticketPriceInput').value = data.price;
+      document.getElementById('ticketPhaseInput').value = data.phase;
+
+      document.getElementById('phaseGlobalInfo').textContent =
+        data.phase + ' active — ' + data.remaining + ' tickets restants.';
+
+      if (data.phaseNumber === 1) {
+        document.getElementById('phase1Card').classList.add('active-phase');
+        document.getElementById('phase1Badge').innerHTML = '<span class="phase-badge">Active Now</span>';
+      }
+
+      if (data.phaseNumber === 2) {
+        document.getElementById('phase2Card').classList.add('active-phase');
+        document.getElementById('phase2Badge').innerHTML = '<span class="phase-badge">Active Now</span>';
+      }
+
+      if (data.phaseNumber === 3) {
+        document.getElementById('phase3Card').classList.add('active-phase');
+        document.getElementById('phase3Badge').innerHTML = '<span class="phase-badge">Active Now</span>';
+      }
+
+    } catch (error) {
+      document.getElementById('currentPhaseTitle').textContent = 'Phase indisponible';
+      document.getElementById('currentPhasePrice').textContent = 'Unavailable';
+      document.getElementById('currentPhaseInfo').textContent =
+        'Impossible de charger la phase actuelle.';
+      document.getElementById('phaseGlobalInfo').textContent =
+        'Impossible de charger la phase actuelle.';
+    }
+  }
+
+  loadCurrentPhase();
+
   document.getElementById('accessForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -842,9 +959,10 @@
 
       formMsg.className = 'notice success';
       formMsg.innerHTML =
-        `Demande envoyée ✅ Référence : <b>${json.guest.reference}</b><br>L’équipe vous contactera après validation.`;
+        `Demande envoyée ✅ Référence : <b>${json.guest.reference}</b><br>Phase : <b>${json.guest.ticket_phase || data.ticketPhase}</b><br>Prix : <b>${json.guest.ticket_price || data.ticketPrice} DHS</b><br>L’équipe vous contactera après validation.`;
 
       form.reset();
+      await loadCurrentPhase();
 
     } catch (error) {
       formMsg.className = 'notice error';
