@@ -8,7 +8,7 @@ const app = express();
 
 const port = Number(process.env.PORT || 4242);
 const appUrl = (process.env.APP_URL || `http://localhost:${port}`).trim();
-const adminPassword = (process.env.ADMIN_PASSWORD || 'Ksgc9122').trim();
+const adminPassword = (process.env.ADMIN_PASSWORD || '').trim();
 const whatsappNumber = (process.env.WHATSAPP_NUMBER || '212600000000').trim();
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim().replace(/\/$/, '');
@@ -30,39 +30,52 @@ function isAdmin(req) {
   return req.headers['x-admin-password'] === adminPassword;
 }
 
+/*
+  UPDATED TICKET PHASES:
+
+  Phase 1: 35 tickets at 150 DHS
+  Phase 2: 20 tickets at 200 DHS
+  Phase 3: 30 tickets at 250 DHS
+
+  Total: 85 tickets
+*/
 function calculateTicketPhase(sold) {
-  if (sold < 20) {
+  const phase1Limit = 35;
+  const phase2Limit = 55; // 35 + 20
+  const phase3Limit = 85; // 35 + 20 + 30
+
+  if (sold < phase1Limit) {
     return {
       phaseNumber: 1,
       phase: 'Phase 1 — Early Access',
       price: 150,
-      limit: 20,
+      limit: 35,
       sold,
-      remaining: 20 - sold,
+      remaining: phase1Limit - sold,
       soldOut: false
     };
   }
 
-  if (sold < 40) {
+  if (sold < phase2Limit) {
     return {
       phaseNumber: 2,
       phase: 'Phase 2 — Regular Access',
       price: 200,
       limit: 20,
       sold,
-      remaining: 40 - sold,
+      remaining: phase2Limit - sold,
       soldOut: false
     };
   }
 
-  if (sold < 70) {
+  if (sold < phase3Limit) {
     return {
       phaseNumber: 3,
       phase: 'Phase 3 — Last Call',
       price: 250,
       limit: 30,
       sold,
-      remaining: 70 - sold,
+      remaining: phase3Limit - sold,
       soldOut: false
     };
   }
