@@ -561,7 +561,7 @@
 <div id="enterOverlay" class="enter-overlay">
   <div class="enter-box">
     <h2>LAYLA NIGHTS</h2>
-    <p>Enter the afterparty experience with sound.</p>
+    <p>Tap to enter the afterparty experience with sound.</p>
     <button id="enterBtn" class="btn btn-primary" type="button">Enter With Music</button>
     <button id="enterNoMusicBtn" class="btn btn-secondary" type="button" style="margin-top:12px;">Enter Without Music</button>
     <p id="musicError" class="notice error"></p>
@@ -807,27 +807,40 @@
   async function playMusic() {
     try {
       musicError.textContent = "";
-      music.volume = 0.8;
+      music.volume = 0.85;
       music.muted = false;
-
       await music.play();
 
       isPlaying = true;
       musicBtn.textContent = "⏸ Music";
       return true;
-
     } catch (error) {
-      console.error("Music error:", error);
-
+      console.error("Music could not play:", error);
       isPlaying = false;
       musicBtn.textContent = "▶ Music";
-
-      musicError.textContent =
-        "Music could not play. Make sure music.mp3 is uploaded in the same folder as index.html.";
-
+      musicError.textContent = "Tap Enter With Music to start the sound.";
       return false;
     }
   }
+
+  async function tryAutoPlayMusic() {
+    try {
+      music.volume = 0.85;
+      music.muted = false;
+      await music.play();
+
+      isPlaying = true;
+      musicBtn.textContent = "⏸ Music";
+      overlay.classList.add("hidden");
+    } catch (error) {
+      console.log("Browser blocked autoplay with sound. Waiting for user tap.");
+      overlay.classList.remove("hidden");
+    }
+  }
+
+  window.addEventListener("load", () => {
+    tryAutoPlayMusic();
+  });
 
   enterBtn.addEventListener("click", async () => {
     overlay.classList.add("hidden");
@@ -856,6 +869,7 @@
   music.addEventListener("error", () => {
     console.error("Audio file failed to load:", music.error);
     musicBtn.textContent = "Music file missing";
+    musicError.textContent = "music.mp3 not found. Upload it next to index.html.";
   });
 
   const eventDate = new Date('2026-05-03T04:00:00').getTime();
